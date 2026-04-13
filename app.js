@@ -5,7 +5,7 @@ const STORAGE_KEY = 'project-score-v1.2';
 
 const state = {
   mode: 'build',
-  types: ['dev'],
+  types: [],
   answers: {},
   gates: {},
   flags: {}
@@ -180,6 +180,105 @@ function compute() {
   return { total, scaled, axisPoints, penalties, decision, hardReject, failedGates, answeredGates, answeredQuestions };
 }
 
+function buildMarkdown() {
+  const r = compute();
+  const now = new Date();
+  const stamp = now.toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' });
+  const mode = MODES[state.mode];
+  const typeNames = state.types.length
+    ? state.types.map(t => TYPES[t].name).join(' + ')
+    : '(선택 없음)';
+  const decisionText = r.decision
+    ? `**${DECISIONS[r.decision].label}** — ${DECISIONS[r.decision].ko} (${DECISIONS[r.decision].desc})`
+    : '_아직 판정 불가 (남은 항목에 답해주세요)_';
+
+  const lines = [];
+  lines.push(`# PROJECT SCORE 결과`);
+  lines.push('');
+  lines.push(`- **작성 시각**: ${stamp}`);
+  lines.push(`- **목적 모드**: ${mode.emoji} ${mode.name} — ${mode.desc}`);
+  lines.push(`- **프로젝트 성격**: ${typeNames}`);
+  lines.push('');
+  lines.push(`## 총점`);
+  lines.push('');
+  lines.push(`> ## ${r.total.toFixed(1)} / 10`);
+  lines.push('');
+  lines.push(`- 원점수(페널티 전): ${r.scaled.toFixed(1)} / 10`);
+  if (r.penalties > 0) lines.push(`- 플래그 감점: −${r.penalties.toFixed(1)}`);
+  lines.push(`- **판정**: ${decisionText}`);
+  if (r.hardReject) lines.push(`- ⚠️ 하드 리젝트 플래그 감지`);
+  if (r.failedGates.length) lines.push(`- ⚠️ 실패한 게이트: ${r.failedGates.join(', ')}`);
+  lines.push('');
+
+  lines.push(`## 축별 점수`);
+  lines.push('');
+  lines.push(`| 축 | 한국어 | 점수 | 최대 |`);
+  lines.push(`|---|---|---:|---:|`);
+  for (const a of Object.values(AXES)) {
+    const pts = r.axisPoints[a.code];
+    const max = axisMaxFor(a.code);
+    lines.push(`| ${a.code} | ${a.ko} (${a.name}) | ${pts.toFixed(1)} | ${max} |`);
+  }
+  lines.push('');
+
+  lines.push(`## 필수 게이트`);
+  lines.push('');
+  for (const g of GATES) {
+    const v = state.gates[g.id];
+    const mark = v === true ? '✅ 예' : v === false ? '❌ 아직입니다' : '➖ 미응답';
+    lines.push(`- **${g.id}** · ${mark}`);
+    lines.push(`  - ${g.text}`);
+  }
+  lines.push('');
+
+  lines.push(`## 14개 질문`);
+  lines.push('');
+  QUESTIONS.forEach((q, i) => {
+    const v = state.answers[q.id];
+    const chosen = v !== undefined ? q.options.find(o => o.v === v) : null;
+    const answerText = chosen
+      ? `**${v}점** — ${chosen.label}${chosen.detail ? ` (${chosen.detail})` : ''}`
+      : '_미응답_';
+    lines.push(`### Q${String(i + 1).padStart(2, '0')}. ${qTitle(q)}`);
+    lines.push('');
+    lines.push(`- **축**: ${q.id} · ${AXES[q.axis].ko} (가중치 ${weightFor(q)})`);
+    lines.push(`- **답변**: ${answerText}`);
+    lines.push(`- _${qHint(q).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()}_`);
+    lines.push('');
+  });
+
+  const active = FLAGS.filter(f => state.flags[f.id] && !isFlagDisabled(f.id));
+  if (active.length) {
+    lines.push(`## 체크된 플래그`);
+    lines.push('');
+    for (const f of active) {
+      const head = f.kind === 'reject'
+        ? `🛑 **${f.id} · ${f.title}** (HARD · RETHINK)`
+        : `⚠️ **${f.id} · ${f.title}** (−${f.penalty.toFixed(1)})`;
+      lines.push(`- ${head}`);
+      lines.push(`  - ${f.desc}`);
+    }
+    lines.push('');
+  }
+
+  lines.push(`---`);
+  lines.push(`_PROJECT SCORE v1.2 · Chessboard monochrome self-diagnostic_`);
+  lines.push(`_결과 벡터_: \`${buildVector()}\``);
+  return lines.join('\n');
+}
+
+function downloadFile(filename, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 function buildVector() {
   const parts = [`PS:1.2`, `MODE:${state.mode}`];
   for (const q of QUESTIONS) parts.push(`${q.id}:${state.answers[q.id] ?? '-'}`);
@@ -272,12 +371,8 @@ function setMode(mode) {
 function toggleType(type) {
   if (!TYPES[type]) return;
   const idx = state.types.indexOf(type);
-  if (idx >= 0) {
-    if (state.types.length === 1) return; // must keep at least one
-    state.types.splice(idx, 1);
-  } else {
-    state.types.push(type);
-  }
+  if (idx >= 0) state.types.splice(idx, 1);
+  else state.types.push(type);
   renderQuestions();
   updateUI(); save();
 }
@@ -309,8 +404,7 @@ function load() {
     const obj = JSON.parse(raw);
     if (obj.mode && MODES[obj.mode]) state.mode = obj.mode;
     if (Array.isArray(obj.types)) {
-      const valid = obj.types.filter(t => TYPES[t]);
-      if (valid.length) state.types = valid;
+      state.types = obj.types.filter(t => TYPES[t]);
     } else if (obj.type && TYPES[obj.type]) {
       state.types = [obj.type];
     }
@@ -358,6 +452,11 @@ function bind() {
   };
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
+
+  document.getElementById('exportMdBtn').addEventListener('click', () => {
+    const md = buildMarkdown();
+    downloadFile(`project-score-${Date.now()}.md`, md, 'text/markdown');
+  });
 
   document.getElementById('exportBtn').addEventListener('click', () => {
     const r = compute();

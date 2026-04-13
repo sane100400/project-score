@@ -1,4 +1,5 @@
 *.Zone.Identifier
+*:Zone.Identifier
 KakaoTalk_*
 deep-research-report.md
 .DS_Store
