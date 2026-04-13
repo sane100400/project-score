@@ -1,0 +1,5 @@
+*.Zone.Identifier
+KakaoTalk_*
+deep-research-report.md
+.DS_Store
+node_modules/
