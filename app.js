@@ -397,22 +397,6 @@ function toggleFlag(fid) {
 function save() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
 }
-function load() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const obj = JSON.parse(raw);
-    if (obj.mode && MODES[obj.mode]) state.mode = obj.mode;
-    if (Array.isArray(obj.types)) {
-      state.types = obj.types.filter(t => TYPES[t]);
-    } else if (obj.type && TYPES[obj.type]) {
-      state.types = [obj.type];
-    }
-    Object.assign(state.answers, obj.answers || {});
-    Object.assign(state.gates,   obj.gates   || {});
-    Object.assign(state.flags,   obj.flags   || {});
-  } catch (_) {}
-}
 
 // ─── events ──────────────────────────────────────────────────
 
@@ -497,7 +481,7 @@ renderModes();
 renderTypes();
 renderAxisBars();
 renderGates();
-load();
+try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
 renderQuestions();
 renderFlags();
 bind();
