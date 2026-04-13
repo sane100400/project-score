@@ -877,10 +877,10 @@ main {
 .action-btn:last-child { border-right: none; }
 .action-btn:hover { background: var(--fg-0); color: var(--bg-0); }
 .action-btn.primary {
-  background: var(--fg-0);
-  color: var(--bg-0);
+  background: var(--bg-1);
+  color: var(--fg-0);
 }
-.action-btn.primary:hover { background: var(--fg-1); }
+.action-btn.primary:hover { background: var(--fg-0); color: var(--bg-0); }
 .action-btn.text {
   background: transparent;
   color: var(--fg-2);

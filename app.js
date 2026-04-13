@@ -438,11 +438,13 @@ function bind() {
   onScroll();
 
   document.getElementById('exportMdBtn').addEventListener('click', () => {
+    if (!confirm('결과를 Markdown 파일로 다운로드할까요?')) return;
     const md = buildMarkdown();
     downloadFile(`project-score-${Date.now()}.md`, md, 'text/markdown');
   });
 
   document.getElementById('exportBtn').addEventListener('click', () => {
+    if (!confirm('결과를 JSON 파일로 다운로드할까요?')) return;
     const r = compute();
     const out = {
       version: '1.2',
