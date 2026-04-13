@@ -190,7 +190,7 @@ function buildMarkdown() {
     : '(선택 없음)';
   const decisionText = r.decision
     ? `**${DECISIONS[r.decision].label}** — ${DECISIONS[r.decision].ko} (${DECISIONS[r.decision].desc})`
-    : '_아직 판정 불가 (남은 항목에 답해주세요)_';
+    : '_아직 판정 불가 (남은 항목에 답해 보세요)_';
 
   const lines = [];
   lines.push(`# PROJECT SCORE 결과`);
@@ -346,7 +346,7 @@ function updateUI() {
     badge.innerHTML = `
       <span class="decision__tag">Waiting</span>
       <div class="decision__ko">아직입니다</div>
-      <span class="decision__desc">남은 질문에 답하시면 결과가 나옵니다</span>
+      <span class="decision__desc">남은 질문에 답하면 결과가 여기에 표시됩니다</span>
     `;
   }
 
@@ -419,7 +419,7 @@ function bind() {
   });
 
   document.getElementById('resetBtn').addEventListener('click', () => {
-    if (!confirm('모든 응답을 초기화합니다. 계속하시겠습니까?')) return;
+    if (!confirm('모든 응답을 초기화합니다. 계속할까요?')) return;
     state.answers = {}; state.gates = {}; state.flags = {};
     save(); updateUI();
   });
