@@ -1,7 +1,7 @@
-// PROJECT SCORE v1.2 — Chessboard disciplined
+// PROJECT SCORE v2.0 — Chessboard White/Black
 import { MODES, TYPES, AXES, QUESTIONS, GATES, FLAGS, DECISIONS } from './questions.js';
 
-const STORAGE_KEY = 'project-score-v1.2';
+const STORAGE_KEY = 'project-score-v2.0';
 
 const state = {
   mode: 'build',
@@ -37,8 +37,8 @@ function isFlagDisabled(fid) {
 function axisMaxFor(axisCode) {
   return QUESTIONS.filter(q => q.axis === axisCode).reduce((s, q) => s + weightFor(q), 0);
 }
-function totalMaxWeight() {
-  return QUESTIONS.reduce((s, q) => s + weightFor(q), 0);
+function toneMaxWeight(tone) {
+  return QUESTIONS.filter(q => AXES[q.axis].tone === tone).reduce((s, q) => s + weightFor(q), 0);
 }
 
 // ─── rendering ───────────────────────────────────────────────
@@ -64,7 +64,10 @@ function renderTypes() {
 }
 
 function renderAxisBars() {
-  document.getElementById('axisBars').innerHTML = Object.values(AXES).map(a => `
+  const whiteAxes = Object.values(AXES).filter(a => a.tone === 'white');
+  const blackAxes = Object.values(AXES).filter(a => a.tone === 'black');
+
+  const axisHTML = axes => axes.map(a => `
     <div class="axis">
       <div class="axis__name">
         ${a.ko}
@@ -76,6 +79,9 @@ function renderAxisBars() {
       <span class="axis__value" data-axis-value="${a.code}">0 / 0</span>
     </div>
   `).join('');
+
+  document.getElementById('whiteAxisBars').innerHTML = axisHTML(whiteAxes);
+  document.getElementById('blackAxisBars').innerHTML = axisHTML(blackAxes);
 }
 
 function renderGates() {
@@ -91,16 +97,17 @@ function renderGates() {
   `).join('');
 }
 
-function renderQuestions() {
+function renderQuestionHTML(questions) {
   const multi = state.types.length > 1;
   const tagBar = multi
     ? `<div class="question__tags">${state.types.map(t => `<span class="q-tag">${TYPES[t].name}</span>`).join('')}<span class="q-tag-note">관점 모두 고려</span></div>`
     : '';
-  document.getElementById('questionsList').innerHTML = QUESTIONS.map((q, i) => `
+
+  return questions.map(q => `
     <div class="question">
       <div class="question__meta">
-        <span class="question__num">Q${String(i + 1).padStart(2, '0')}</span>
-        <span class="question__axis">${q.id} · ${AXES[q.axis].ko}</span>
+        <span class="question__num">${q.id}</span>
+        <span class="question__axis">${AXES[q.axis].ko} · ${AXES[q.axis].name}</span>
       </div>
       <h3 class="question__title">${qTitle(q)}</h3>
       ${q.hintByType && multi ? tagBar : ''}
@@ -118,6 +125,13 @@ function renderQuestions() {
   `).join('');
 }
 
+function renderQuestions() {
+  const whiteQs = QUESTIONS.filter(q => AXES[q.axis].tone === 'white');
+  const blackQs = QUESTIONS.filter(q => AXES[q.axis].tone === 'black');
+  document.getElementById('whiteQuestionsList').innerHTML = renderQuestionHTML(whiteQs);
+  document.getElementById('blackQuestionsList').innerHTML = renderQuestionHTML(blackQs);
+}
+
 function renderFlags() {
   document.getElementById('flagsList').innerHTML = FLAGS.map(f => `
     <div class="flag ${f.kind}" data-fid="${f.id}">
@@ -133,8 +147,10 @@ function renderFlags() {
 
 function compute() {
   const mode = currentMode();
-  const axisPoints = { I: 0, N: 0, F: 0, D: 0, E: 0 };
-  let rawTotal = 0;
+  const axisPoints = {};
+  for (const a of Object.values(AXES)) axisPoints[a.code] = 0;
+
+  let whiteRaw = 0, blackRaw = 0;
 
   for (const q of QUESTIONS) {
     const v = state.answers[q.id];
@@ -142,16 +158,19 @@ function compute() {
     const w = weightFor(q);
     const pts = w * (v / 2);
     axisPoints[q.axis] += pts;
-    rawTotal += pts;
+    if (AXES[q.axis].tone === 'white') whiteRaw += pts;
+    else blackRaw += pts;
   }
 
-  const maxW = totalMaxWeight();
-  const questionScore = (rawTotal / maxW) * 8;
+  const whiteMax = toneMaxWeight('white');
+  const blackMax = toneMaxWeight('black');
+  const whiteScore = whiteMax > 0 ? (whiteRaw / whiteMax) * 4 : 0;
+  const blackScore = blackMax > 0 ? (blackRaw / blackMax) * 4 : 0;
 
   const passedGates = GATES.filter(g => state.gates[g.id] === true).length;
   const gateScore = (passedGates / GATES.length) * 2;
 
-  const scaled = questionScore + gateScore;
+  const scaled = whiteScore + blackScore + gateScore;
 
   const penalties = FLAGS
     .filter(f => f.kind === 'penalty' && state.flags[f.id])
@@ -177,7 +196,11 @@ function compute() {
   else if (total >= th.study) decision = 'study';
   else decision = 'reject';
 
-  return { total, scaled, axisPoints, penalties, decision, hardReject, failedGates, answeredGates, answeredQuestions };
+  return {
+    total, scaled, whiteScore, blackScore, gateScore,
+    axisPoints, penalties, decision, hardReject, failedGates,
+    answeredGates, answeredQuestions
+  };
 }
 
 function buildMarkdown() {
@@ -203,7 +226,9 @@ function buildMarkdown() {
   lines.push('');
   lines.push(`> ## ${r.total.toFixed(1)} / 10`);
   lines.push('');
-  lines.push(`- 원점수(페널티 전): ${r.scaled.toFixed(1)} / 10`);
+  lines.push(`- ♔ White (주제 품질): ${r.whiteScore.toFixed(1)} / 4.0`);
+  lines.push(`- ♚ Black (실행 준비): ${r.blackScore.toFixed(1)} / 4.0`);
+  lines.push(`- Gate: ${r.gateScore.toFixed(1)} / 2.0`);
   if (r.penalties > 0) lines.push(`- 플래그 감점: −${r.penalties.toFixed(1)}`);
   lines.push(`- **판정**: ${decisionText}`);
   if (r.hardReject) lines.push(`- ⚠️ 하드 리젝트 플래그 감지`);
@@ -212,9 +237,21 @@ function buildMarkdown() {
 
   lines.push(`## 축별 점수`);
   lines.push('');
+  lines.push(`### ♔ White`);
+  lines.push('');
   lines.push(`| 축 | 한국어 | 점수 | 최대 |`);
   lines.push(`|---|---|---:|---:|`);
-  for (const a of Object.values(AXES)) {
+  for (const a of Object.values(AXES).filter(a => a.tone === 'white')) {
+    const pts = r.axisPoints[a.code];
+    const max = axisMaxFor(a.code);
+    lines.push(`| ${a.code} | ${a.ko} (${a.name}) | ${pts.toFixed(1)} | ${max} |`);
+  }
+  lines.push('');
+  lines.push(`### ♚ Black`);
+  lines.push('');
+  lines.push(`| 축 | 한국어 | 점수 | 최대 |`);
+  lines.push(`|---|---|---:|---:|`);
+  for (const a of Object.values(AXES).filter(a => a.tone === 'black')) {
     const pts = r.axisPoints[a.code];
     const max = axisMaxFor(a.code);
     lines.push(`| ${a.code} | ${a.ko} (${a.name}) | ${pts.toFixed(1)} | ${max} |`);
@@ -231,21 +268,32 @@ function buildMarkdown() {
   }
   lines.push('');
 
-  lines.push(`## 14개 질문`);
+  const whiteQs = QUESTIONS.filter(q => AXES[q.axis].tone === 'white');
+  const blackQs = QUESTIONS.filter(q => AXES[q.axis].tone === 'black');
+
+  const renderQBlock = (qs) => {
+    for (const q of qs) {
+      const v = state.answers[q.id];
+      const chosen = v !== undefined ? q.options.find(o => o.v === v) : null;
+      const answerText = chosen
+        ? `**${v}점** — ${chosen.label}${chosen.detail ? ` (${chosen.detail})` : ''}`
+        : '_미응답_';
+      lines.push(`### ${q.id}. ${qTitle(q)}`);
+      lines.push('');
+      lines.push(`- **축**: ${q.id} · ${AXES[q.axis].ko} (가중치 ${weightFor(q)})`);
+      lines.push(`- **답변**: ${answerText}`);
+      lines.push(`- _${qHint(q).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()}_`);
+      lines.push('');
+    }
+  };
+
+  lines.push(`## ♔ WHITE — 주제 진단`);
   lines.push('');
-  QUESTIONS.forEach((q, i) => {
-    const v = state.answers[q.id];
-    const chosen = v !== undefined ? q.options.find(o => o.v === v) : null;
-    const answerText = chosen
-      ? `**${v}점** — ${chosen.label}${chosen.detail ? ` (${chosen.detail})` : ''}`
-      : '_미응답_';
-    lines.push(`### Q${String(i + 1).padStart(2, '0')}. ${qTitle(q)}`);
-    lines.push('');
-    lines.push(`- **축**: ${q.id} · ${AXES[q.axis].ko} (가중치 ${weightFor(q)})`);
-    lines.push(`- **답변**: ${answerText}`);
-    lines.push(`- _${qHint(q).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()}_`);
-    lines.push('');
-  });
+  renderQBlock(whiteQs);
+
+  lines.push(`## ♚ BLACK — 실행 진단`);
+  lines.push('');
+  renderQBlock(blackQs);
 
   const active = FLAGS.filter(f => state.flags[f.id] && !isFlagDisabled(f.id));
   if (active.length) {
@@ -262,7 +310,7 @@ function buildMarkdown() {
   }
 
   lines.push(`---`);
-  lines.push(`_PROJECT SCORE v1.2 · Chessboard monochrome self-diagnostic_`);
+  lines.push(`_PROJECT SCORE v2.0 · Chessboard White/Black self-diagnostic_`);
   lines.push(`_결과 벡터_: \`${buildVector()}\``);
   return lines.join('\n');
 }
@@ -280,7 +328,7 @@ function downloadFile(filename, content, mime) {
 }
 
 function buildVector() {
-  const parts = [`PS:1.2`, `MODE:${state.mode}`];
+  const parts = [`PS:2.0`, `MODE:${state.mode}`];
   for (const q of QUESTIONS) parts.push(`${q.id}:${state.answers[q.id] ?? '-'}`);
   for (const g of GATES) {
     const v = state.gates[g.id];
@@ -331,6 +379,11 @@ function updateUI() {
   document.getElementById('scoreSublabel').textContent =
     `답변 ${r.answeredQuestions} / ${QUESTIONS.length} · 게이트 ${r.answeredGates} / ${GATES.length}`;
   document.getElementById('scorePctLabel').textContent = `${Math.round(progressPct)}%`;
+
+  // Tone scores
+  document.getElementById('whiteScoreVal').textContent = `${r.whiteScore.toFixed(1)} / 4.0`;
+  document.getElementById('blackScoreVal').textContent = `${r.blackScore.toFixed(1)} / 4.0`;
+  document.getElementById('gateScoreVal').textContent = `${r.gateScore.toFixed(1)} / 2.0`;
 
   const badge = document.getElementById('decisionBadge');
   if (r.decision) {
@@ -447,7 +500,7 @@ function bind() {
     if (!confirm('결과를 JSON 파일로 다운로드할까요?')) return;
     const r = compute();
     const out = {
-      version: '1.2',
+      version: '2.0',
       timestamp: new Date().toISOString(),
       mode: state.mode,
       vector: buildVector(),
@@ -455,6 +508,9 @@ function bind() {
       result: {
         total: +r.total.toFixed(2),
         scaled: +r.scaled.toFixed(2),
+        whiteScore: +r.whiteScore.toFixed(2),
+        blackScore: +r.blackScore.toFixed(2),
+        gateScore: +r.gateScore.toFixed(2),
         penalties: r.penalties,
         decision: r.decision,
         decisionLabel: r.decision ? DECISIONS[r.decision].ko : null,
