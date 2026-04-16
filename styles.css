@@ -491,7 +491,6 @@ main {
 
 .tab-panel--white.active {
   background: var(--w-panel);
-  border-left: 2px solid var(--fg-2);
   padding: var(--sp-4);
 }
 .tab-panel--white.single-track {
