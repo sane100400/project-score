@@ -459,8 +459,7 @@ main {
 .tab__name {
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: 1.8px;
-  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 .tab__score {
   margin-left: auto;
