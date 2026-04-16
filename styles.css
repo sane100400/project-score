@@ -17,10 +17,9 @@
   --line:  #2c2c33;    /* all borders */
   --line-2:#3c3c48;    /* stronger borders */
 
-  --w-bg:  #d0d0d8;    /* white panel bg — soft cool gray, not blinding */
-  --w-fg:  #131316;    /* white panel primary text */
-  --w-fg2: #454550;    /* white panel secondary text */
-  --w-line: rgba(0,0,0,0.12);  /* white panel borders */
+  /* ♔ White accent — brighter borders + elevated bg on dark */
+  --w-line:   rgba(255,255,255,0.10);
+  --w-bg-card: #161619;  /* slightly brighter than --bg-1 */
 
   --col: 1040px;
 
@@ -241,8 +240,8 @@ main {
 .mode:last-child { border-right: none; }
 .mode:hover { background: var(--bg-2); }
 .mode.selected {
-  background: var(--w-bg);
-  color: var(--w-fg);
+  background: var(--fg-0);
+  color: var(--bg-0);
 }
 .mode__emoji {
   font-size: 20px;
@@ -259,7 +258,7 @@ main {
   color: var(--fg-1);
   line-height: 1.6;
 }
-.mode.selected .mode__desc { color: var(--w-fg); opacity: 0.65; }
+.mode.selected .mode__desc { color: var(--bg-0); opacity: 0.72; }
 .mode__example {
   font-family: var(--font-d);
   font-size: 11px;
@@ -271,9 +270,9 @@ main {
   letter-spacing: 0.3px;
 }
 .mode.selected .mode__example {
-  color: var(--w-fg);
-  opacity: 0.5;
-  border-top-color: rgba(0,0,0,0.12);
+  color: var(--bg-0);
+  opacity: 0.55;
+  border-top-color: rgba(10,10,11,0.18);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -325,8 +324,8 @@ main {
 .type-btn:last-child { border-right: none; }
 .type-btn:hover { background: var(--bg-2); color: var(--fg-0); }
 .type-btn.selected {
-  background: var(--w-bg);
-  color: var(--w-fg);
+  background: var(--fg-0);
+  color: var(--bg-0);
 }
 .type-btn__name {
   font-family: var(--font-d);
@@ -346,15 +345,15 @@ main {
   transition: all 150ms ease;
 }
 .type-btn.selected .type-btn__name::before {
-  background: var(--w-fg);
-  border-color: var(--w-fg);
+  background: var(--bg-0);
+  border-color: var(--bg-0);
 }
 .type-btn__desc {
   font-size: 12px;
   line-height: 1.55;
   color: var(--fg-1);
 }
-.type-btn.selected .type-btn__desc { color: var(--w-fg); opacity: 0.6; }
+.type-btn.selected .type-btn__desc { color: var(--bg-0); opacity: 0.65; }
 
 @media (max-width: 860px) {
   .type-grid { grid-template-columns: repeat(2, 1fr); }
@@ -406,8 +405,8 @@ main {
 .track-btn:last-child { border-right: none; }
 .track-btn:hover { background: var(--bg-2); color: var(--fg-0); }
 .track-btn.selected {
-  background: var(--w-bg);
-  color: var(--w-fg);
+  background: var(--fg-0);
+  color: var(--bg-0);
 }
 .track-btn__icon {
   font-size: 18px;
@@ -424,7 +423,7 @@ main {
   line-height: 1.55;
   color: var(--fg-1);
 }
-.track-btn.selected .track-btn__desc { color: var(--w-fg); opacity: 0.6; }
+.track-btn.selected .track-btn__desc { color: var(--bg-0); opacity: 0.65; }
 
 /* ══════════════════════════════════════════════════════════════════
    Tab bar — ♔ WHITE | ♚ BLACK
@@ -450,15 +449,16 @@ main {
 .tab:hover { color: var(--fg-0); background: var(--bg-2); }
 
 .tab--white.active {
-  background: var(--w-bg);
-  color: var(--w-fg);
+  background: var(--bg-0);
+  color: var(--fg-0);
+  box-shadow: inset 0 -2px 0 var(--fg-0);
 }
-.tab--white.active:hover { background: var(--w-bg); color: var(--w-fg); }
+.tab--white.active:hover { background: var(--bg-0); color: var(--fg-0); }
 
 .tab--black.active {
   background: var(--bg-0);
   color: var(--fg-0);
-  box-shadow: inset 0 -2px 0 var(--fg-0);
+  box-shadow: inset 0 -2px 0 var(--fg-2);
 }
 .tab--black.active:hover { background: var(--bg-0); color: var(--fg-0); }
 
@@ -488,15 +488,10 @@ main {
 .tab-panel.active { display: block; }
 
 .tab-panel--white.active {
-  background: var(--w-bg);
-  color: var(--w-fg);
-  border: 1px solid var(--w-line);
-  border-top: none;
-  padding: var(--sp-4);
+  padding-top: var(--sp-4);
 }
 .tab-panel--white.single-track {
   margin-top: var(--sp-5);
-  border-top: 1px solid var(--w-line);
 }
 
 .tab-panel--black.active {
@@ -504,8 +499,6 @@ main {
 }
 .tab-panel--black.single-track {
   margin-top: var(--sp-5);
-  border-top: 1px solid var(--line);
-  padding-top: var(--sp-4);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -722,92 +715,45 @@ main {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   ♔ WHITE panel — soft light tone (chessboard white square)
-   Uses --w-bg/--w-fg/--w-fg2/--w-line vars for cohesive feel
+   ♔ WHITE panel — dark bg, brighter accents than Black
+   Both panels stay dark; White uses elevated bg + bright borders
    ══════════════════════════════════════════════════════════════════ */
 
-/* Score card */
+/* Score card — slightly elevated bg, brighter borders */
 .tab-panel--white .score {
-  background: rgba(255,255,255,0.35);
+  background: var(--w-bg-card);
   border-color: var(--w-line);
 }
 .tab-panel--white .score__cell {
   border-right-color: var(--w-line);
+}
+.tab-panel--white .score__axis-row {
+  border-top-color: var(--w-line);
+}
+.tab-panel--white .axis__track { background: rgba(255,255,255,0.08); }
+
+/* Panel sections — brighter separator */
+.tab-panel--white .panel-section__head {
   border-bottom-color: var(--w-line);
 }
-.tab-panel--white .score__label { color: var(--w-fg); }
-.tab-panel--white .score__value { color: var(--w-fg); }
-.tab-panel--white .score__denom { color: var(--w-fg2); }
-.tab-panel--white .score__progress-meta { color: var(--w-fg2); }
-.tab-panel--white .progress-track { background: rgba(0,0,0,0.1); }
-.tab-panel--white .progress-fill { background: var(--w-fg); }
 
-/* Decision */
-.tab-panel--white .decision__tag { color: var(--w-fg); }
-.tab-panel--white .decision__tag::before { background: var(--w-fg2); }
-.tab-panel--white .decision__ko { color: var(--w-fg); }
-.tab-panel--white .decision__desc { color: var(--w-fg2); }
-.tab-panel--white .decision.pass .decision__tag::before { background: var(--w-fg); }
-.tab-panel--white .decision.pass .decision__ko { color: var(--w-fg); }
-.tab-panel--white .decision.reject .decision__tag::before { background: var(--w-fg); }
-
-/* Axis row */
-.tab-panel--white .score__axis-row { border-top-color: var(--w-line); }
-.tab-panel--white .axis { border-bottom-color: rgba(0,0,0,0.08); }
-.tab-panel--white .axis__name { color: var(--w-fg); }
-.tab-panel--white .axis__name small { color: var(--w-fg2); }
-.tab-panel--white .axis__track { background: rgba(0,0,0,0.1); }
-.tab-panel--white .axis__fill { background: var(--w-fg); }
-.tab-panel--white .axis__value { color: var(--w-fg2); }
-
-/* Panel section headings */
-.tab-panel--white .panel-section__head { border-bottom-color: var(--w-line); }
-.tab-panel--white .panel-section__title { color: var(--w-fg); }
-.tab-panel--white .panel-section__desc { color: var(--w-fg2); }
-
-/* Questions */
+/* Questions — elevated card, brighter borders */
 .tab-panel--white .questions {
-  background: rgba(255,255,255,0.25);
+  background: var(--w-bg-card);
   border-color: var(--w-line);
 }
 .tab-panel--white .question {
-  border-bottom-color: rgba(0,0,0,0.08);
-}
-.tab-panel--white .question:hover {
-  background: rgba(255,255,255,0.3);
+  border-bottom-color: var(--w-line);
 }
 .tab-panel--white .question__meta {
-  border-bottom-color: rgba(0,0,0,0.08);
+  border-bottom-color: var(--w-line);
 }
-.tab-panel--white .question__num { color: var(--w-fg); }
-.tab-panel--white .question__axis { color: var(--w-fg2); }
-.tab-panel--white .question__title { color: var(--w-fg); }
-.tab-panel--white .question__hint {
-  color: var(--w-fg2);
-  border-left-color: rgba(0,0,0,0.2);
+.tab-panel--white .question__options {
+  border-color: var(--w-line);
 }
-.tab-panel--white .q-tag {
-  background: var(--w-fg);
-  color: var(--w-bg);
-}
-.tab-panel--white .q-tag-note { color: var(--w-fg2); }
-.tab-panel--white .question__options { border-color: rgba(0,0,0,0.12); }
 .tab-panel--white .opt {
-  color: var(--w-fg2);
-  border-right-color: rgba(0,0,0,0.12);
+  border-right-color: var(--w-line);
 }
-.tab-panel--white .opt:hover {
-  background: rgba(255,255,255,0.35);
-  color: var(--w-fg);
-}
-.tab-panel--white .opt.selected {
-  background: var(--w-fg);
-  color: var(--w-bg);
-}
-.tab-panel--white .opt__val { color: rgba(0,0,0,0.35); }
-.tab-panel--white .opt.selected .opt__val { color: var(--w-bg); opacity: 0.6; }
-.tab-panel--white .opt__detail { color: var(--w-fg2); }
-.tab-panel--white .opt.selected .opt__detail { color: var(--w-bg); opacity: 0.7; }
 
 /* ══════════════════════════════════════════════════════════════════
    Gates — 2-column grid
@@ -882,13 +828,13 @@ main {
 .toggle-btn:hover { color: var(--fg-0); }
 .toggle-btn:hover::before { border-color: var(--fg-0); }
 .toggle-btn.selected-yes {
-  background: var(--w-bg);
-  color: var(--w-fg);
+  background: var(--fg-0);
+  color: var(--bg-0);
   font-weight: 700;
 }
 .toggle-btn.selected-yes::before {
-  background: var(--w-fg);
-  border-color: var(--w-fg);
+  background: var(--bg-0);
+  border-color: var(--bg-0);
 }
 .toggle-btn.selected-no {
   background: repeating-linear-gradient(
@@ -1175,9 +1121,9 @@ main {
   right: 24px;
   bottom: 24px;
   z-index: 50;
-  background: var(--w-bg);
-  color: var(--w-fg);
-  border: 1px solid var(--w-bg);
+  background: var(--bg-3);
+  color: var(--fg-0);
+  border: 1px solid var(--line-2);
   padding: 12px 18px 12px 14px;
   font-family: var(--font-d);
   display: flex;
@@ -1187,7 +1133,7 @@ main {
   pointer-events: none;
   transform: translateY(8px);
   transition: opacity 200ms ease, transform 200ms ease, background 150ms ease, color 150ms ease;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
 }
 .score-fab.visible {
   opacity: 1;
@@ -1195,9 +1141,9 @@ main {
   transform: translateY(0);
 }
 .score-fab:hover {
-  background: var(--bg-0);
-  color: var(--fg-0);
-  border-color: var(--line-2);
+  background: var(--fg-0);
+  color: var(--bg-0);
+  border-color: var(--fg-0);
 }
 .score-fab__mark {
   width: 14px;
@@ -1293,13 +1239,12 @@ footer {
   .tab__score { font-size: 18px; }
 
   /* Tab panels */
-  .tab-panel--white.active { padding: var(--sp-3); }
 
   /* Score card */
   .score { grid-template-columns: 1fr; }
   .score__cell { border-right: none; border-bottom: 1px solid var(--line); padding: var(--sp-3); }
   .score__cell:last-of-type { border-bottom: none; }
-  .tab-panel--white .score__cell { border-bottom-color: var(--w-line); }
+  .tab-panel--white .score__cell { border-bottom-color: var(--w-line); border-right: none; }
 
   .score__axis-row { padding: var(--sp-3); }
   .gate-summary { padding: var(--sp-2) var(--sp-3); }
@@ -1391,7 +1336,6 @@ footer {
   .tab__score { font-size: 16px; }
 
   /* Tab panels */
-  .tab-panel--white.active { padding: var(--sp-2) 16px var(--sp-3); }
   .tab-panel--black.active { padding-top: var(--sp-3); }
 
   /* Panel sections */
