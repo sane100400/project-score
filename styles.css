@@ -17,11 +17,6 @@
   --line:  #2c2c33;    /* all borders */
   --line-2:#3c3c48;    /* stronger borders */
 
-  /* ♔ White track — elevated surface on dark */
-  --w-panel:  #16161c;   /* panel bg — visible step above page */
-  --w-card:   #1e1e26;   /* card bg — clearly lifted */
-  --w-line:   #3a3a46;   /* borders — noticeably brighter */
-  --w-hover:  #24242e;   /* hover state */
 
   --col: 1040px;
 
@@ -450,19 +445,12 @@ main {
 .tab:first-child { border-right: 1px solid var(--line); }
 .tab:hover { color: var(--fg-0); background: var(--bg-2); }
 
-.tab--white.active {
+.tab.active {
   background: var(--bg-0);
   color: var(--fg-0);
   box-shadow: inset 0 -2px 0 var(--fg-0);
 }
-.tab--white.active:hover { background: var(--bg-0); color: var(--fg-0); }
-
-.tab--black.active {
-  background: var(--bg-0);
-  color: var(--fg-0);
-  box-shadow: inset 0 -2px 0 var(--fg-2);
-}
-.tab--black.active:hover { background: var(--bg-0); color: var(--fg-0); }
+.tab.active:hover { background: var(--bg-0); color: var(--fg-0); }
 
 .tab__icon {
   font-size: 20px;
@@ -490,8 +478,7 @@ main {
 .tab-panel.active { display: block; }
 
 .tab-panel--white.active {
-  background: var(--w-panel);
-  padding: var(--sp-4);
+  padding-top: var(--sp-4);
 }
 .tab-panel--white.single-track {
   margin-top: var(--sp-5);
@@ -715,55 +702,6 @@ main {
   font-family: var(--font-d);
   font-size: 12px;
   color: var(--fg-1);
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   ♔ WHITE panel — elevated surface, brighter cards & borders
-   Stays dark but noticeably lifted from the Black panel
-   ══════════════════════════════════════════════════════════════════ */
-
-/* Score card */
-.tab-panel--white .score {
-  background: var(--w-card);
-  border-color: var(--w-line);
-}
-.tab-panel--white .score__cell {
-  border-right-color: var(--w-line);
-}
-.tab-panel--white .score__axis-row {
-  border-top-color: var(--w-line);
-}
-.tab-panel--white .axis { border-bottom-color: var(--w-line); }
-.tab-panel--white .axis__track { background: rgba(255,255,255,0.10); }
-.tab-panel--white .progress-track { background: rgba(255,255,255,0.10); }
-
-/* Panel sections */
-.tab-panel--white .panel-section__head {
-  border-bottom-color: var(--w-line);
-}
-
-/* Questions */
-.tab-panel--white .questions {
-  background: var(--w-card);
-  border-color: var(--w-line);
-}
-.tab-panel--white .question {
-  border-bottom-color: var(--w-line);
-}
-.tab-panel--white .question:hover {
-  background: var(--w-hover);
-}
-.tab-panel--white .question__meta {
-  border-bottom-color: var(--w-line);
-}
-.tab-panel--white .question__options {
-  border-color: var(--w-line);
-}
-.tab-panel--white .opt {
-  border-right-color: var(--w-line);
-}
-.tab-panel--white .opt:hover {
-  background: var(--w-hover);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -1255,7 +1193,6 @@ footer {
   .score { grid-template-columns: 1fr; }
   .score__cell { border-right: none; border-bottom: 1px solid var(--line); padding: var(--sp-3); }
   .score__cell:last-of-type { border-bottom: none; }
-  .tab-panel--white .score__cell { border-bottom-color: var(--w-line); }
 
   .score__axis-row { padding: var(--sp-3); }
   .gate-summary { padding: var(--sp-2) var(--sp-3); }
@@ -1281,8 +1218,6 @@ footer {
   .question__options { grid-template-columns: 1fr; }
   .opt { border-right: none; border-bottom: 1px solid var(--line-2); padding: 16px 14px; }
   .opt:last-child { border-bottom: none; }
-  .tab-panel--white .opt { border-right: none; border-bottom: 1px solid var(--w-line); }
-  .tab-panel--white .opt:last-child { border-bottom: none; }
 
   .axis { grid-template-columns: 120px 1fr 72px; gap: 12px; }
 
