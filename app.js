@@ -1,15 +1,17 @@
-// PROJECT SCORE v2.0 — Chessboard White/Black
+// PROJECT SCORE v3.0 — Dual Track White/Black
 import { MODES, TYPES, AXES, QUESTIONS, GATES, FLAGS, DECISIONS } from './questions.js';
 
-const STORAGE_KEY = 'project-score-v2.0';
+const STORAGE_KEY = 'project-score-v3.0';
 
 const state = {
   mode: 'build',
   types: [],
+  track: 'both',   // 'white' | 'black' | 'both'
   answers: {},
   gates: {},
   flags: {}
 };
+let activeTab = 'white';
 
 function qTitle(q) {
   if (!q.titleByType) return q.title;
@@ -40,6 +42,9 @@ function axisMaxFor(axisCode) {
 function toneMaxWeight(tone) {
   return QUESTIONS.filter(q => AXES[q.axis].tone === tone).reduce((s, q) => s + weightFor(q), 0);
 }
+
+const whiteQuestions = QUESTIONS.filter(q => AXES[q.axis].tone === 'white');
+const blackQuestions = QUESTIONS.filter(q => AXES[q.axis].tone === 'black');
 
 // ─── rendering ───────────────────────────────────────────────
 
@@ -126,21 +131,28 @@ function renderQuestionHTML(questions) {
 }
 
 function renderQuestions() {
-  const whiteQs = QUESTIONS.filter(q => AXES[q.axis].tone === 'white');
-  const blackQs = QUESTIONS.filter(q => AXES[q.axis].tone === 'black');
-  document.getElementById('whiteQuestionsList').innerHTML = renderQuestionHTML(whiteQs);
-  document.getElementById('blackQuestionsList').innerHTML = renderQuestionHTML(blackQs);
+  document.getElementById('whiteQuestionsList').innerHTML = renderQuestionHTML(whiteQuestions);
+  document.getElementById('blackQuestionsList').innerHTML = renderQuestionHTML(blackQuestions);
+}
+
+function visibleFlags() {
+  if (state.track === 'both') return FLAGS;
+  return FLAGS.filter(f => f.tone === state.track);
 }
 
 function renderFlags() {
-  document.getElementById('flagsList').innerHTML = FLAGS.map(f => `
+  const visible = visibleFlags();
+  document.getElementById('flagsList').innerHTML = visible.map(f => `
     <div class="flag ${f.kind}" data-fid="${f.id}">
       <div class="flag__check"></div>
-      <span class="flag__kind">${f.kind === 'reject' ? 'HARD · RETHINK' : `−${f.penalty.toFixed(1)} 감점`}</span>
+      <span class="flag__kind">${f.tone === 'white' ? '♔' : '♚'} ${f.kind === 'reject' ? 'HARD · RETHINK' : `−${f.penalty.toFixed(1)} 감점`}</span>
       <div class="flag__title">${f.id} · ${f.title}</div>
       <div class="flag__desc">${f.desc}</div>
     </div>
   `).join('');
+  // Hide flags section entirely if no flags visible
+  const section = document.getElementById('flagsSection');
+  if (section) section.style.display = visible.length > 0 ? '' : 'none';
 }
 
 // ─── scoring ─────────────────────────────────────────────────
@@ -151,6 +163,7 @@ function compute() {
   for (const a of Object.values(AXES)) axisPoints[a.code] = 0;
 
   let whiteRaw = 0, blackRaw = 0;
+  let whiteAnswered = 0, blackAnswered = 0;
 
   for (const q of QUESTIONS) {
     const v = state.answers[q.id];
@@ -158,48 +171,64 @@ function compute() {
     const w = weightFor(q);
     const pts = w * (v / 2);
     axisPoints[q.axis] += pts;
-    if (AXES[q.axis].tone === 'white') whiteRaw += pts;
-    else blackRaw += pts;
+    if (AXES[q.axis].tone === 'white') { whiteRaw += pts; whiteAnswered++; }
+    else { blackRaw += pts; blackAnswered++; }
   }
 
   const whiteMax = toneMaxWeight('white');
   const blackMax = toneMaxWeight('black');
-  const whiteScore = whiteMax > 0 ? (whiteRaw / whiteMax) * 4 : 0;
-  const blackScore = blackMax > 0 ? (blackRaw / blackMax) * 4 : 0;
 
+  // ♔ White: pure question score (0–10)
+  const whiteScore = whiteMax > 0 ? (whiteRaw / whiteMax) * 10 : 0;
+
+  // ♚ Black: questions (0–8) + gates (0–2) − penalties
   const passedGates = GATES.filter(g => state.gates[g.id] === true).length;
+  const answeredGates = GATES.filter(g => state.gates[g.id] !== undefined).length;
   const gateScore = (passedGates / GATES.length) * 2;
 
-  const scaled = whiteScore + blackScore + gateScore;
-
   const penalties = FLAGS
-    .filter(f => f.kind === 'penalty' && state.flags[f.id])
+    .filter(f => f.kind === 'penalty' && state.flags[f.id] && !isFlagDisabled(f.id))
     .reduce((s, f) => s + f.penalty, 0);
 
-  const total = Math.max(0, scaled - penalties);
+  const blackScoreRaw = (blackMax > 0 ? (blackRaw / blackMax) * 8 : 0) + gateScore;
+  const blackScore = Math.max(0, blackScoreRaw - penalties);
 
-  const hardReject = FLAGS.some(f =>
-    f.kind === 'reject' && state.flags[f.id] && !isFlagDisabled(f.id)
+  // ♔ White decision
+  const whiteReject = FLAGS.some(f =>
+    f.kind === 'reject' && f.tone === 'white' && state.flags[f.id] && !isFlagDisabled(f.id)
+  );
+  const wt = mode.whiteThresholds;
+  let whiteDecision;
+  if (whiteReject) whiteDecision = 'reject';
+  else if (whiteAnswered < whiteQuestions.length) whiteDecision = null;
+  else if (whiteScore >= wt.pass) whiteDecision = 'pass';
+  else if (whiteScore >= wt.conditional) whiteDecision = 'conditional';
+  else if (whiteScore >= wt.study) whiteDecision = 'study';
+  else whiteDecision = 'reject';
+
+  // ♚ Black decision
+  const blackReject = FLAGS.some(f =>
+    f.kind === 'reject' && f.tone === 'black' && state.flags[f.id] && !isFlagDisabled(f.id)
   );
   const failedGates = GATES.filter(g => state.gates[g.id] === false).map(g => g.id);
-  const answeredGates = GATES.filter(g => state.gates[g.id] !== undefined).length;
-  const answeredQuestions = QUESTIONS.filter(q => state.answers[q.id] !== undefined).length;
-
-  const th = mode.thresholds;
-
-  let decision;
-  if (hardReject) decision = 'reject';
-  else if (failedGates.length > 0) decision = 'revise';
-  else if (answeredGates < GATES.length || answeredQuestions < QUESTIONS.length) decision = null;
-  else if (total >= th.pass) decision = 'pass';
-  else if (total >= th.conditional) decision = 'conditional';
-  else if (total >= th.study) decision = 'study';
-  else decision = 'reject';
+  const bt = mode.blackThresholds;
+  let blackDecision;
+  if (blackReject) blackDecision = 'reject';
+  else if (failedGates.length > 0) blackDecision = 'revise';
+  else if (blackAnswered < blackQuestions.length || answeredGates < GATES.length) blackDecision = null;
+  else if (blackScore >= bt.pass) blackDecision = 'pass';
+  else if (blackScore >= bt.conditional) blackDecision = 'conditional';
+  else if (blackScore >= bt.study) blackDecision = 'study';
+  else blackDecision = 'reject';
 
   return {
-    total, scaled, whiteScore, blackScore, gateScore,
-    axisPoints, penalties, decision, hardReject, failedGates,
-    answeredGates, answeredQuestions
+    whiteScore, blackScore,
+    whiteDecision, blackDecision,
+    whiteReject, blackReject,
+    axisPoints, gateScore, penalties,
+    whiteAnswered, blackAnswered,
+    answeredGates, failedGates,
+    passedGates
   };
 }
 
@@ -211,65 +240,23 @@ function buildMarkdown() {
   const typeNames = state.types.length
     ? state.types.map(t => TYPES[t].name).join(' + ')
     : '(선택 없음)';
-  const decisionText = r.decision
-    ? `**${DECISIONS[r.decision].label}** — ${DECISIONS[r.decision].ko} (${DECISIONS[r.decision].desc})`
+
+  const decisionText = (d) => d
+    ? `**${DECISIONS[d].label}** — ${DECISIONS[d].ko} (${DECISIONS[d].desc})`
     : '_아직 판정 불가 (남은 항목에 답해 보세요)_';
 
   const lines = [];
+  const trackLabel = state.track === 'white' ? '♔ WHITE 주제 진단'
+    : state.track === 'black' ? '♚ BLACK 실행 진단'
+    : '♔♚ DUAL TRACK';
+
   lines.push(`# PROJECT SCORE 결과`);
   lines.push('');
   lines.push(`- **작성 시각**: ${stamp}`);
   lines.push(`- **목적 모드**: ${mode.emoji} ${mode.name} — ${mode.desc}`);
   lines.push(`- **프로젝트 성격**: ${typeNames}`);
+  lines.push(`- **진단 범위**: ${trackLabel}`);
   lines.push('');
-  lines.push(`## 총점`);
-  lines.push('');
-  lines.push(`> ## ${r.total.toFixed(1)} / 10`);
-  lines.push('');
-  lines.push(`- ♔ White (주제 품질): ${r.whiteScore.toFixed(1)} / 4.0`);
-  lines.push(`- ♚ Black (실행 준비): ${r.blackScore.toFixed(1)} / 4.0`);
-  lines.push(`- Gate: ${r.gateScore.toFixed(1)} / 2.0`);
-  if (r.penalties > 0) lines.push(`- 플래그 감점: −${r.penalties.toFixed(1)}`);
-  lines.push(`- **판정**: ${decisionText}`);
-  if (r.hardReject) lines.push(`- ⚠️ 하드 리젝트 플래그 감지`);
-  if (r.failedGates.length) lines.push(`- ⚠️ 실패한 게이트: ${r.failedGates.join(', ')}`);
-  lines.push('');
-
-  lines.push(`## 축별 점수`);
-  lines.push('');
-  lines.push(`### ♔ White`);
-  lines.push('');
-  lines.push(`| 축 | 한국어 | 점수 | 최대 |`);
-  lines.push(`|---|---|---:|---:|`);
-  for (const a of Object.values(AXES).filter(a => a.tone === 'white')) {
-    const pts = r.axisPoints[a.code];
-    const max = axisMaxFor(a.code);
-    lines.push(`| ${a.code} | ${a.ko} (${a.name}) | ${pts.toFixed(1)} | ${max} |`);
-  }
-  lines.push('');
-  lines.push(`### ♚ Black`);
-  lines.push('');
-  lines.push(`| 축 | 한국어 | 점수 | 최대 |`);
-  lines.push(`|---|---|---:|---:|`);
-  for (const a of Object.values(AXES).filter(a => a.tone === 'black')) {
-    const pts = r.axisPoints[a.code];
-    const max = axisMaxFor(a.code);
-    lines.push(`| ${a.code} | ${a.ko} (${a.name}) | ${pts.toFixed(1)} | ${max} |`);
-  }
-  lines.push('');
-
-  lines.push(`## 필수 게이트`);
-  lines.push('');
-  for (const g of GATES) {
-    const v = state.gates[g.id];
-    const mark = v === true ? '✅ 예' : v === false ? '❌ 아직입니다' : '➖ 미응답';
-    lines.push(`- **${g.id}** · ${mark}`);
-    lines.push(`  - ${g.text}`);
-  }
-  lines.push('');
-
-  const whiteQs = QUESTIONS.filter(q => AXES[q.axis].tone === 'white');
-  const blackQs = QUESTIONS.filter(q => AXES[q.axis].tone === 'black');
 
   const renderQBlock = (qs) => {
     for (const q of qs) {
@@ -287,22 +274,69 @@ function buildMarkdown() {
     }
   };
 
-  lines.push(`## ♔ WHITE — 주제 진단`);
-  lines.push('');
-  renderQBlock(whiteQs);
+  // ♔ White
+  if (state.track !== 'black') {
+    lines.push(`## ♔ WHITE — 주제 진단`);
+    lines.push('');
+    lines.push(`> ## ${r.whiteScore.toFixed(1)} / 10`);
+    lines.push('');
+    lines.push(`- **판정**: ${decisionText(r.whiteDecision)}`);
+    if (r.whiteReject) lines.push(`- ⚠️ 하드 리젝트 플래그 감지`);
+    lines.push('');
+    lines.push(`| 축 | 한국어 | 점수 | 최대 |`);
+    lines.push(`|---|---|---:|---:|`);
+    for (const a of Object.values(AXES).filter(a => a.tone === 'white')) {
+      const pts = r.axisPoints[a.code];
+      const max = axisMaxFor(a.code);
+      lines.push(`| ${a.code} | ${a.ko} (${a.name}) | ${pts.toFixed(1)} | ${max} |`);
+    }
+    lines.push('');
+    renderQBlock(whiteQuestions);
+  }
 
-  lines.push(`## ♚ BLACK — 실행 진단`);
-  lines.push('');
-  renderQBlock(blackQs);
+  // ♚ Black
+  if (state.track !== 'white') {
+    lines.push(`## ♚ BLACK — 실행 진단`);
+    lines.push('');
+    lines.push(`> ## ${r.blackScore.toFixed(1)} / 10`);
+    lines.push('');
+    lines.push(`- Gate: ${r.gateScore.toFixed(1)} / 2.0`);
+    if (r.penalties > 0) lines.push(`- 감점: −${r.penalties.toFixed(1)}`);
+    lines.push(`- **판정**: ${decisionText(r.blackDecision)}`);
+    if (r.blackReject) lines.push(`- ⚠️ 하드 리젝트 플래그 감지`);
+    if (r.failedGates.length) lines.push(`- ⚠️ 실패한 게이트: ${r.failedGates.join(', ')}`);
+    lines.push('');
+    lines.push(`| 축 | 한국어 | 점수 | 최대 |`);
+    lines.push(`|---|---|---:|---:|`);
+    for (const a of Object.values(AXES).filter(a => a.tone === 'black')) {
+      const pts = r.axisPoints[a.code];
+      const max = axisMaxFor(a.code);
+      lines.push(`| ${a.code} | ${a.ko} (${a.name}) | ${pts.toFixed(1)} | ${max} |`);
+    }
+    lines.push('');
 
+    lines.push(`### 필수 게이트`);
+    lines.push('');
+    for (const g of GATES) {
+      const v = state.gates[g.id];
+      const mark = v === true ? '✅ 예' : v === false ? '❌ 아직입니다' : '➖ 미응답';
+      lines.push(`- **${g.id}** · ${mark}`);
+      lines.push(`  - ${g.text}`);
+    }
+    lines.push('');
+    renderQBlock(blackQuestions);
+  }
+
+  // Flags
   const active = FLAGS.filter(f => state.flags[f.id] && !isFlagDisabled(f.id));
   if (active.length) {
     lines.push(`## 체크된 플래그`);
     lines.push('');
     for (const f of active) {
+      const toneIcon = f.tone === 'white' ? '♔' : '♚';
       const head = f.kind === 'reject'
-        ? `🛑 **${f.id} · ${f.title}** (HARD · RETHINK)`
-        : `⚠️ **${f.id} · ${f.title}** (−${f.penalty.toFixed(1)})`;
+        ? `🛑 **${f.id} · ${f.title}** (${toneIcon} HARD · RETHINK)`
+        : `⚠️ **${f.id} · ${f.title}** (${toneIcon} −${f.penalty.toFixed(1)})`;
       lines.push(`- ${head}`);
       lines.push(`  - ${f.desc}`);
     }
@@ -310,7 +344,7 @@ function buildMarkdown() {
   }
 
   lines.push(`---`);
-  lines.push(`_PROJECT SCORE v2.0 · Chessboard White/Black self-diagnostic_`);
+  lines.push(`_PROJECT SCORE v3.0 · Dual Track White/Black self-diagnostic_`);
   lines.push(`_결과 벡터_: \`${buildVector()}\``);
   return lines.join('\n');
 }
@@ -328,7 +362,7 @@ function downloadFile(filename, content, mime) {
 }
 
 function buildVector() {
-  const parts = [`PS:2.0`, `MODE:${state.mode}`];
+  const parts = [`PS:3.0`, `MODE:${state.mode}`];
   for (const q of QUESTIONS) parts.push(`${q.id}:${state.answers[q.id] ?? '-'}`);
   for (const g of GATES) {
     const v = state.gates[g.id];
@@ -340,6 +374,69 @@ function buildVector() {
 }
 
 // ─── UI update ───────────────────────────────────────────────
+
+function setTrack(track) {
+  if (!['white', 'black', 'both'].includes(track)) return;
+  state.track = track;
+
+  // Show/hide tab bar
+  const tabBar = document.getElementById('tabBar');
+  tabBar.style.display = track === 'both' ? '' : 'none';
+
+  // When single track, show that panel directly; when both, follow activeTab
+  if (track === 'both') {
+    setTab(activeTab);
+  } else {
+    activeTab = track;
+    document.getElementById('whitePanel').classList.toggle('active', track === 'white');
+    document.getElementById('blackPanel').classList.toggle('active', track === 'black');
+    // Style single-panel top edge
+    document.getElementById('whitePanel').classList.toggle('single-track', track === 'white');
+    document.getElementById('blackPanel').classList.toggle('single-track', track === 'black');
+  }
+
+  // Update track selector buttons
+  document.querySelectorAll('.track-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.track === track);
+  });
+
+  // Filter flags by selected track
+  renderFlags();
+  updateUI();
+  save();
+}
+
+function setTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach(t => {
+    const isActive = t.dataset.tab === tab;
+    t.classList.toggle('active', isActive);
+    t.setAttribute('aria-selected', isActive);
+  });
+  document.getElementById('whitePanel').classList.toggle('active', tab === 'white');
+  document.getElementById('blackPanel').classList.toggle('active', tab === 'black');
+  document.getElementById('whitePanel').classList.remove('single-track');
+  document.getElementById('blackPanel').classList.remove('single-track');
+}
+
+function updateDecisionBadge(el, decision) {
+  if (decision) {
+    const d = DECISIONS[decision];
+    el.className = `decision ${decision}`;
+    el.innerHTML = `
+      <span class="decision__tag">${d.label}</span>
+      <div class="decision__ko">${d.ko}</div>
+      <span class="decision__desc">${d.desc}</span>
+    `;
+  } else {
+    el.className = 'decision';
+    el.innerHTML = `
+      <span class="decision__tag">Waiting</span>
+      <div class="decision__ko">아직입니다</div>
+      <span class="decision__desc">남은 질문에 답하면 결과가 여기에 표시됩니다</span>
+    `;
+  }
+}
 
 function updateUI() {
   document.querySelectorAll('.mode').forEach(c => {
@@ -369,40 +466,42 @@ function updateUI() {
   });
 
   const r = compute();
-  document.getElementById('scoreValue').textContent = r.total.toFixed(1);
-  document.getElementById('scoreFabVal').textContent = r.total.toFixed(1);
 
-  const answeredTotal = r.answeredQuestions + r.answeredGates;
-  const totalItems = QUESTIONS.length + GATES.length;
-  const progressPct = (answeredTotal / totalItems) * 100;
-  document.getElementById('progressFill').style.width = `${progressPct}%`;
-  document.getElementById('scoreSublabel').textContent =
-    `답변 ${r.answeredQuestions} / ${QUESTIONS.length} · 게이트 ${r.answeredGates} / ${GATES.length}`;
-  document.getElementById('scorePctLabel').textContent = `${Math.round(progressPct)}%`;
+  // ♔ White score panel
+  document.getElementById('whiteScoreValue').textContent = r.whiteScore.toFixed(1);
+  const whitePct = (r.whiteAnswered / whiteQuestions.length) * 100;
+  document.getElementById('whiteProgressFill').style.width = `${whitePct}%`;
+  document.getElementById('whiteSublabel').textContent = `답변 ${r.whiteAnswered} / ${whiteQuestions.length}`;
+  document.getElementById('whitePctLabel').textContent = `${Math.round(whitePct)}%`;
+  updateDecisionBadge(document.getElementById('whiteDecisionBadge'), r.whiteDecision);
 
-  // Tone scores
-  document.getElementById('whiteScoreVal').textContent = `${r.whiteScore.toFixed(1)} / 4.0`;
-  document.getElementById('blackScoreVal').textContent = `${r.blackScore.toFixed(1)} / 4.0`;
+  // ♚ Black score panel
+  document.getElementById('blackScoreValue').textContent = r.blackScore.toFixed(1);
+  const blackTotal = blackQuestions.length + GATES.length;
+  const blackDone = r.blackAnswered + r.answeredGates;
+  const blackPct = (blackDone / blackTotal) * 100;
+  document.getElementById('blackProgressFill').style.width = `${blackPct}%`;
+  document.getElementById('blackSublabel').textContent =
+    `답변 ${r.blackAnswered} / ${blackQuestions.length} · 게이트 ${r.answeredGates} / ${GATES.length}`;
+  document.getElementById('blackPctLabel').textContent = `${Math.round(blackPct)}%`;
   document.getElementById('gateScoreVal').textContent = `${r.gateScore.toFixed(1)} / 2.0`;
+  updateDecisionBadge(document.getElementById('blackDecisionBadge'), r.blackDecision);
 
-  const badge = document.getElementById('decisionBadge');
-  if (r.decision) {
-    const d = DECISIONS[r.decision];
-    badge.className = `decision ${r.decision}`;
-    badge.innerHTML = `
-      <span class="decision__tag">${d.label}</span>
-      <div class="decision__ko">${d.ko}</div>
-      <span class="decision__desc">${d.desc}</span>
-    `;
-  } else {
-    badge.className = 'decision';
-    badge.innerHTML = `
-      <span class="decision__tag">Waiting</span>
-      <div class="decision__ko">아직입니다</div>
-      <span class="decision__desc">남은 질문에 답하면 결과가 여기에 표시됩니다</span>
-    `;
-  }
+  // Tab bar scores
+  document.getElementById('whiteTabScore').textContent = r.whiteScore.toFixed(1);
+  document.getElementById('blackTabScore').textContent = r.blackScore.toFixed(1);
 
+  // FAB scores — show only relevant track(s)
+  const fabWhite = document.getElementById('scoreFabWhite');
+  const fabBlack = document.getElementById('scoreFabBlack');
+  const fabSep   = document.getElementById('scoreFabSep');
+  if (fabWhite) fabWhite.style.display = (state.track === 'black') ? 'none' : '';
+  if (fabBlack) fabBlack.style.display = (state.track === 'white') ? 'none' : '';
+  if (fabSep)   fabSep.style.display   = (state.track === 'both')  ? ''     : 'none';
+  document.getElementById('scoreFabWhiteVal').textContent = r.whiteScore.toFixed(1);
+  document.getElementById('scoreFabBlackVal').textContent = r.blackScore.toFixed(1);
+
+  // Axis bars
   for (const a of Object.values(AXES)) {
     const pts = r.axisPoints[a.code];
     const max = axisMaxFor(a.code);
@@ -461,11 +560,17 @@ function bind() {
     const typeBtn = e.target.closest('.type-btn');
     if (typeBtn) { toggleType(typeBtn.dataset.type); return; }
 
+    const tab = e.target.closest('.tab');
+    if (tab) { setTab(tab.dataset.tab); return; }
+
     const opt = e.target.closest('.opt');
     if (opt) { setAnswer(opt.dataset.qid, +opt.dataset.val); return; }
 
     const chip = e.target.closest('.toggle-btn[data-gid]');
     if (chip) { setGate(chip.dataset.gid, chip.dataset.val === 'true'); return; }
+
+    const trackBtn = e.target.closest('.track-btn');
+    if (trackBtn) { setTrack(trackBtn.dataset.track); return; }
 
     const flag = e.target.closest('.flag');
     if (flag) { toggleFlag(flag.dataset.fid); return; }
@@ -479,13 +584,27 @@ function bind() {
 
   const fab = document.getElementById('scoreFab');
   fab.addEventListener('click', () => {
-    document.getElementById('scorePanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    let target;
+    if (state.track === 'both') {
+      target = document.getElementById('tabBar');
+    } else if (state.track === 'white') {
+      target = document.getElementById('whiteScorePanel');
+    } else {
+      target = document.getElementById('blackScorePanel');
+    }
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
-  const scorePanel = document.getElementById('scorePanel');
   const onScroll = () => {
-    const rect = scorePanel.getBoundingClientRect();
-    const offScreen = rect.bottom < 80;
-    fab.classList.toggle('visible', offScreen);
+    let anchor;
+    if (state.track === 'both') {
+      anchor = document.getElementById('tabBar');
+    } else if (state.track === 'white') {
+      anchor = document.getElementById('whiteScorePanel');
+    } else {
+      anchor = document.getElementById('blackScorePanel');
+    }
+    const rect = anchor.getBoundingClientRect();
+    fab.classList.toggle('visible', rect.bottom < 80);
   };
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
@@ -499,27 +618,42 @@ function bind() {
   document.getElementById('exportBtn').addEventListener('click', () => {
     if (!confirm('결과를 JSON 파일로 다운로드할까요?')) return;
     const r = compute();
-    const out = {
-      version: '2.0',
-      timestamp: new Date().toISOString(),
-      mode: state.mode,
-      vector: buildVector(),
-      state,
-      result: {
-        total: +r.total.toFixed(2),
-        scaled: +r.scaled.toFixed(2),
-        whiteScore: +r.whiteScore.toFixed(2),
-        blackScore: +r.blackScore.toFixed(2),
+    const result = {};
+    if (state.track !== 'black') {
+      result.white = {
+        score: +r.whiteScore.toFixed(2),
+        decision: r.whiteDecision,
+        decisionLabel: r.whiteDecision ? DECISIONS[r.whiteDecision].ko : null,
+        hardReject: r.whiteReject,
+        axisScores: Object.fromEntries(
+          Object.values(AXES).filter(a => a.tone === 'white')
+            .map(a => [a.code, +r.axisPoints[a.code].toFixed(2)])
+        )
+      };
+    }
+    if (state.track !== 'white') {
+      result.black = {
+        score: +r.blackScore.toFixed(2),
         gateScore: +r.gateScore.toFixed(2),
         penalties: r.penalties,
-        decision: r.decision,
-        decisionLabel: r.decision ? DECISIONS[r.decision].ko : null,
-        hardReject: r.hardReject,
+        decision: r.blackDecision,
+        decisionLabel: r.blackDecision ? DECISIONS[r.blackDecision].ko : null,
+        hardReject: r.blackReject,
         failedGates: r.failedGates,
         axisScores: Object.fromEntries(
-          Object.values(AXES).map(a => [a.code, +r.axisPoints[a.code].toFixed(2)])
+          Object.values(AXES).filter(a => a.tone === 'black')
+            .map(a => [a.code, +r.axisPoints[a.code].toFixed(2)])
         )
-      }
+      };
+    }
+    const out = {
+      version: '3.0',
+      timestamp: new Date().toISOString(),
+      mode: state.mode,
+      track: state.track,
+      vector: buildVector(),
+      state,
+      result
     };
     const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
