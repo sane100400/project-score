@@ -9,7 +9,8 @@ const state = {
   track: 'both',   // 'white' | 'black' | 'both'
   answers: {},
   gates: {},
-  flags: {}
+  flags: {},
+  inputs: {}
 };
 let activeTab = 'white';
 
@@ -117,6 +118,18 @@ function renderQuestionHTML(questions) {
       <h3 class="question__title">${qTitle(q)}</h3>
       ${q.hintByType && multi ? tagBar : ''}
       <div class="question__hint">${qHint(q)}</div>
+      ${q.inputs ? `<div class="question__inputs">${q.inputs.map((inp, idx) => `
+        <div class="input-row">
+          <span class="input-row__label">${inp.label}</span>
+          <input type="${inp.type === 'number' ? 'number' : inp.type === 'link' ? 'url' : 'text'}"
+            class="input-row__field input-row__field--${inp.type}"
+            data-qid="${q.id}" data-input-idx="${idx}"
+            ${inp.type === 'number' ? 'min="0"' : ''}
+            placeholder="${inp.type === 'number' ? '0' : inp.type === 'link' ? 'https://' : '입력...'}"
+            value="${((state.inputs[q.id] || [])[idx]) || ''}"
+          >
+        </div>
+      `).join('')}</div>` : ''}
       <div class="question__options">
         ${q.options.map(o => `
           <button type="button" class="opt" data-qid="${q.id}" data-val="${o.v}">
@@ -269,6 +282,12 @@ function buildMarkdown() {
       lines.push('');
       lines.push(`- **축**: ${q.id} · ${AXES[q.axis].ko} (가중치 ${weightFor(q)})`);
       lines.push(`- **답변**: ${answerText}`);
+      if (q.inputs && state.inputs[q.id]) {
+        for (let i = 0; i < q.inputs.length; i++) {
+          const val = state.inputs[q.id][i];
+          if (val) lines.push(`- **${q.inputs[i].label}**: ${val}`);
+        }
+      }
       lines.push(`- _${qHint(q).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()}_`);
       lines.push('');
     }
@@ -543,6 +562,24 @@ function toggleFlag(fid) {
   state.flags[fid] = !state.flags[fid];
   updateUI(); save();
 }
+function setInput(qid, idx, value) {
+  if (!state.inputs[qid]) state.inputs[qid] = [];
+  state.inputs[qid][idx] = value;
+  const q = QUESTIONS.find(q => q.id === qid);
+  if (q && q.inputs) {
+    const inp = q.inputs[idx];
+    if (inp && inp.auto && inp.type === 'number') {
+      const val = Number(value) || 0;
+      for (const rule of inp.auto) {
+        if (val >= rule.threshold) {
+          state.answers[qid] = rule.score;
+          break;
+        }
+      }
+    }
+  }
+  updateUI(); save();
+}
 
 // ─── persistence ─────────────────────────────────────────────
 
@@ -576,10 +613,16 @@ function bind() {
     if (flag) { toggleFlag(flag.dataset.fid); return; }
   });
 
+  document.addEventListener('input', (e) => {
+    const field = e.target.closest('.input-row__field');
+    if (!field) return;
+    setInput(field.dataset.qid, +field.dataset.inputIdx, field.value);
+  });
+
   document.getElementById('resetBtn').addEventListener('click', () => {
     if (!confirm('모든 응답을 초기화합니다. 계속할까요?')) return;
-    state.answers = {}; state.gates = {}; state.flags = {};
-    save(); updateUI();
+    state.answers = {}; state.gates = {}; state.flags = {}; state.inputs = {};
+    renderQuestions(); save(); updateUI();
   });
 
   const fab = document.getElementById('scoreFab');

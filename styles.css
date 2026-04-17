@@ -57,7 +57,7 @@ body {
   overflow-x: hidden;
 }
 
-h1, h2, h3, h4, p, span, button, div, label, small {
+h1, h2, h3, h4, p, span, button, div, label, small, input, textarea {
   word-break: keep-all;
   overflow-wrap: break-word;
 }
@@ -303,7 +303,7 @@ main {
 }
 .type-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   border: 1px solid var(--line);
   background: var(--bg-1);
 }
@@ -396,8 +396,9 @@ main {
   border-right: 1px solid var(--line);
   transition: background 150ms ease, color 150ms ease;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
 }
 .track-btn:last-child { border-right: none; }
 .track-btn:hover { background: var(--bg-2); color: var(--fg-0); }
@@ -408,12 +409,14 @@ main {
 .track-btn__icon {
   font-size: 18px;
   line-height: 1;
+  flex-shrink: 0;
 }
 .track-btn__name {
   font-family: var(--font-d);
   font-size: 14.5px;
   font-weight: 600;
   letter-spacing: -0.2px;
+  flex-shrink: 0;
 }
 .track-btn__desc {
   font-size: 12px;
@@ -488,6 +491,74 @@ main {
 }
 .tab-panel--black.single-track {
   margin-top: var(--sp-5);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   ♔ White panel — elevated tone
+   Same layout, lifted surfaces + brighter borders + accent
+   ────────────────────────────────────────────────────────────────── */
+
+/* White tab active: inverted (white bg, dark text) */
+.tab.tab--white.active {
+  background: var(--fg-0);
+  color: var(--bg-0);
+  box-shadow: none;
+}
+.tab.tab--white.active:hover {
+  background: var(--fg-0);
+  color: var(--bg-0);
+}
+
+/* Score card: elevated bg + white top accent */
+.tab-panel--white .score {
+  background: #252530;
+  border-color: #55556a;
+  border-top: 2px solid var(--fg-0);
+}
+.tab-panel--white .score__cell {
+  border-color: #55556a;
+}
+.tab-panel--white .score__axis-row {
+  border-color: #55556a;
+}
+
+/* Questions: elevated bg */
+.tab-panel--white .questions {
+  background: #252530;
+  border-color: #55556a;
+}
+.tab-panel--white .question {
+  border-color: #55556a;
+}
+.tab-panel--white .question:hover {
+  background: #30303c;
+}
+.tab-panel--white .question__meta {
+  border-color: #55556a;
+}
+.tab-panel--white .question__options {
+  border-color: #55556a;
+}
+.tab-panel--white .opt {
+  border-color: #55556a;
+}
+
+/* Section heads */
+.tab-panel--white .panel-section__head {
+  border-color: #55556a;
+}
+
+/* Axis / progress tracks brighter */
+.tab-panel--white .axis__track {
+  background: #55556a;
+}
+.tab-panel--white .progress-track {
+  background: #55556a;
+}
+
+/* Hint accent brighter */
+.tab-panel--white .question__hint {
+  border-left-color: var(--fg-0);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -804,6 +875,56 @@ main {
 /* ══════════════════════════════════════════════════════════════════
    Questions — single-column stacked list
    ══════════════════════════════════════════════════════════════════ */
+
+/* Input fields inside questions */
+.question__inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: var(--sp-3);
+}
+.input-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+.input-row__label {
+  font-family: var(--font-d);
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  color: var(--fg-2);
+}
+.input-row__field {
+  background: var(--bg-0);
+  border: 1px solid var(--line-2);
+  color: var(--fg-0);
+  font-family: var(--font-d);
+  font-size: 13px;
+  padding: 10px 12px;
+  width: 100%;
+  transition: border-color 150ms ease;
+}
+.input-row__field:focus {
+  outline: none;
+  border-color: var(--fg-0);
+}
+.input-row__field::placeholder {
+  color: var(--fg-2);
+  opacity: 0.5;
+}
+.input-row__field--number {
+  max-width: 120px;
+}
+
+/* White panel input overrides */
+.tab-panel--white .input-row__field {
+  background: #1a1a20;
+  border-color: #55556a;
+}
+.tab-panel--white .input-row__field:focus {
+  border-color: var(--fg-0);
+}
 
 .questions {
   border: 1px solid var(--line);
@@ -1215,6 +1336,7 @@ footer {
   /* Questions */
   .question { padding: var(--sp-3); }
   .question__options { grid-template-columns: 1fr; }
+  .input-row { grid-template-columns: 120px 1fr; }
   .opt { border-right: none; border-bottom: 1px solid var(--line-2); padding: 16px 14px; }
   .opt:last-child { border-bottom: none; }
 
@@ -1314,6 +1436,8 @@ footer {
   .question__axis { font-size: 10px; letter-spacing: 1px; }
   .question__title { font-size: 18px; }
   .question__hint { font-size: 13.5px; padding-left: 12px; line-height: 1.7; }
+  .input-row { grid-template-columns: 1fr; gap: 6px; }
+  .input-row__field--number { max-width: none; }
   .opt { padding: 14px 14px 16px; }
   .opt__label { font-size: 14px; }
   .opt__detail { font-size: 12px; }

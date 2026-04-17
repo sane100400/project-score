@@ -219,6 +219,25 @@ for (const item of splitByH3(sections['질문'] || '')) {
     fail(`질문 ${item.id}: #### 선택지 섹션 필수`);
   }
 
+  if (subs['입력']) {
+    const validInputTypes = new Set(['number', 'link', 'text']);
+    const rows = parseTable(subs['입력']);
+    q.inputs = rows.map(cells => {
+      const type = (cells[0] || '').trim().toLowerCase();
+      if (!validInputTypes.has(type)) fail(`질문 ${item.id}: 입력 타입 "${type}"은 number, link, text만 가능`);
+      const input = { type, label: sanitize(cells[1] || '') };
+      if (cells[2] && cells[2].trim()) {
+        const rules = [];
+        for (const token of cells[2].split(',')) {
+          const m = token.trim().match(/^(\d+)\s*→\s*(\d+)$/);
+          if (m) rules.push({ threshold: +m[1], score: +m[2] });
+        }
+        if (rules.length) input.auto = rules.sort((a, b) => b.threshold - a.threshold);
+      }
+      return input;
+    });
+  }
+
   questions.push(q);
 }
 
