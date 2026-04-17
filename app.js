@@ -120,7 +120,7 @@ function renderQuestionHTML(questions) {
       ${q.hintByType && multi ? tagBar : ''}
       <div class="question__hint">${qHint(q)}</div>
       <div class="question__memo">
-        <textarea class="memo-field" data-qid="${q.id}" placeholder="내 상황을 적어 보세요…" rows="2">${state.memos[q.id] || ''}</textarea>
+        <textarea class="memo-field" data-qid="${q.id}" placeholder="내 상황을 적어 보세요" rows="2">${state.memos[q.id] || ''}</textarea>
       </div>
       ${q.inputs ? `<div class="question__inputs">${q.inputs.map((inp, idx) => `
         <div class="input-row">
