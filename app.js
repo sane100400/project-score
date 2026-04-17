@@ -10,7 +10,8 @@ const state = {
   answers: {},
   gates: {},
   flags: {},
-  inputs: {}
+  inputs: {},
+  memos: {}
 };
 let activeTab = 'white';
 
@@ -118,6 +119,9 @@ function renderQuestionHTML(questions) {
       <h3 class="question__title">${qTitle(q)}</h3>
       ${q.hintByType && multi ? tagBar : ''}
       <div class="question__hint">${qHint(q)}</div>
+      <div class="question__memo">
+        <textarea class="memo-field" data-qid="${q.id}" placeholder="내 상황을 적어 보세요…" rows="2">${state.memos[q.id] || ''}</textarea>
+      </div>
       ${q.inputs ? `<div class="question__inputs">${q.inputs.map((inp, idx) => `
         <div class="input-row">
           <span class="input-row__label">${inp.label}</span>
@@ -282,6 +286,7 @@ function buildMarkdown() {
       lines.push('');
       lines.push(`- **축**: ${q.id} · ${AXES[q.axis].ko} (가중치 ${weightFor(q)})`);
       lines.push(`- **답변**: ${answerText}`);
+      if (state.memos[q.id]) lines.push(`- **메모**: ${state.memos[q.id].replace(/\n/g, ' ')}`);
       if (q.inputs && state.inputs[q.id]) {
         for (let i = 0; i < q.inputs.length; i++) {
           const val = state.inputs[q.id][i];
@@ -615,13 +620,15 @@ function bind() {
 
   document.addEventListener('input', (e) => {
     const field = e.target.closest('.input-row__field');
-    if (!field) return;
-    setInput(field.dataset.qid, +field.dataset.inputIdx, field.value);
+    if (field) { setInput(field.dataset.qid, +field.dataset.inputIdx, field.value); return; }
+
+    const memo = e.target.closest('.memo-field');
+    if (memo) { state.memos[memo.dataset.qid] = memo.value; save(); }
   });
 
   document.getElementById('resetBtn').addEventListener('click', () => {
     if (!confirm('모든 응답을 초기화합니다. 계속할까요?')) return;
-    state.answers = {}; state.gates = {}; state.flags = {}; state.inputs = {};
+    state.answers = {}; state.gates = {}; state.flags = {}; state.inputs = {}; state.memos = {};
     renderQuestions(); save(); updateUI();
   });
 

@@ -876,6 +876,41 @@ main {
    Questions — single-column stacked list
    ══════════════════════════════════════════════════════════════════ */
 
+/* Memo field */
+.question__memo {
+  margin-bottom: var(--sp-3);
+}
+.memo-field {
+  width: 100%;
+  background: var(--bg-0);
+  border: 1px solid var(--line-2);
+  color: var(--fg-1);
+  font-family: var(--font-b);
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 12px 14px;
+  resize: vertical;
+  min-height: 56px;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+.memo-field:focus {
+  outline: none;
+  border-color: var(--fg-2);
+  color: var(--fg-0);
+}
+.memo-field::placeholder {
+  color: var(--fg-2);
+  opacity: 0.6;
+}
+.tab-panel--white .memo-field {
+  background: #1a1a20;
+  border-color: #55556a;
+}
+.tab-panel--white .memo-field:focus {
+  border-color: #8888aa;
+}
+
 /* Input fields inside questions */
 .question__inputs {
   display: flex;
