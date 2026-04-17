@@ -208,21 +208,52 @@ for (const item of splitByH3(sections['질문'] || '')) {
   if (subs['타입별 힌트']) q.hintByType  = parseTypedList(subs['타입별 힌트']);
 
   if (subs['선택지']) {
-    const rows = parseTable(subs['선택지']);
-    if (rows.length === 0) fail(`질문 ${item.id}: 선택지 테이블이 비어 있습니다`);
-    q.options = rows.map(cells => ({
-      v: toNum(cells[0], `질문 ${item.id} 선택지 점수`),
-      label: sanitize(cells[1] || ''),
-      detail: sanitize(cells[2] || '')
-    }));
+    const optText = subs['선택지'];
+    const hasTable = optText.split('\n').some(l => l.trim().startsWith('|'));
+    if (hasTable) {
+      const rows = parseTable(optText);
+      if (rows.length === 0) fail(`질문 ${item.id}: 선택지 테이블이 비어 있습니다`);
+      q.options = rows.map(cells => ({
+        v: toNum(cells[0], `질문 ${item.id} 선택지 점수`),
+        label: sanitize(cells[1] || ''),
+        detail: sanitize(cells[2] || '')
+      }));
+    } else {
+      // List format: - 0: label | detail
+      q.options = [];
+      for (const line of optText.split('\n')) {
+        const m = line.match(/^- (\d+):\s*(.+)$/);
+        if (!m) continue;
+        const parts = m[2].split('|').map(s => s.trim());
+        q.options.push({
+          v: toNum(m[1], `질문 ${item.id} 선택지 점수`),
+          label: sanitize(parts[0] || ''),
+          detail: sanitize(parts[1] || '')
+        });
+      }
+      if (q.options.length === 0) fail(`질문 ${item.id}: 선택지가 비어 있습니다`);
+    }
   } else {
     fail(`질문 ${item.id}: #### 선택지 섹션 필수`);
   }
 
   if (subs['입력']) {
     const validInputTypes = new Set(['number', 'link', 'text']);
-    const rows = parseTable(subs['입력']);
-    q.inputs = rows.map(cells => {
+    const inputText = subs['입력'];
+    const hasTable = inputText.split('\n').some(l => l.trim().startsWith('|'));
+    const inputRows = hasTable ? parseTable(inputText) : [];
+
+    if (!hasTable) {
+      // List format: - type: label | auto
+      for (const line of inputText.split('\n')) {
+        const m = line.match(/^- (\w+):\s*(.+)$/);
+        if (!m) continue;
+        const parts = m[2].split('|').map(s => s.trim());
+        inputRows.push([m[1], parts[0], parts[1] || '']);
+      }
+    }
+
+    q.inputs = inputRows.map(cells => {
       const type = (cells[0] || '').trim().toLowerCase();
       if (!validInputTypes.has(type)) fail(`질문 ${item.id}: 입력 타입 "${type}"은 number, link, text만 가능`);
       const input = { type, label: sanitize(cells[1] || '') };
