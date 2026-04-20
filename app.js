@@ -5,7 +5,7 @@ const STORAGE_KEY = 'project-score-v3.0';
 
 const state = {
   mode: 'build',
-  types: [],
+  types: ['dev'],
   track: 'both',   // 'white' | 'black' | 'both'
   answers: {},
   gates: {},
