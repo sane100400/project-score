@@ -43,7 +43,8 @@ export default async function handler(req) {
   }
 
   const {
-    topic, mode, types, track,
+    topic, estimatedHours, worthIt,
+    mode, types, track,
     whiteScore, blackScore, whiteDecision, blackDecision,
     passedGates, penalties,
     answers, gates, flags, inputs, memos,
@@ -105,7 +106,8 @@ export default async function handler(req) {
         white_score, black_score, white_decision, black_decision,
         passed_gates, penalties,
         answers, gates, flags, inputs, memos,
-        vector, terms_version, app_version
+        vector, terms_version, app_version,
+        estimated_hours, worth_it
       ) values (
         ${cleanTopic}, ${mode}, ${types.slice(0, 10)}, ${track},
         ${Number.isFinite(whiteScore) ? whiteScore : null},
@@ -117,7 +119,9 @@ export default async function handler(req) {
         ${JSON.stringify(flags)}, ${JSON.stringify(cleanInputs)},
         ${JSON.stringify(cleanMemos)},
         ${clamp(String(vector ?? ''), 4000)},
-        ${TERMS_VERSION}, ${APP_VERSION}
+        ${TERMS_VERSION}, ${APP_VERSION},
+        ${Number.isInteger(estimatedHours) && estimatedHours > 0 && estimatedHours <= 100000 ? estimatedHours : null},
+        ${typeof worthIt === 'boolean' ? worthIt : null}
       )
     `;
     return new Response(JSON.stringify({ ok: true }), {

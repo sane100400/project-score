@@ -8,6 +8,8 @@ const state = {
   types: ['dev'],
   track: 'both',   // 'white' | 'black' | 'both'
   topic: '',
+  estimatedHours: null,
+  worthIt: null,  // true | false | null
   answers: {},
   gates: {},
   flags: {},
@@ -640,6 +642,26 @@ function bind() {
     });
   }
 
+  const hoursField = document.getElementById('hoursField');
+  if (hoursField) {
+    hoursField.value = state.estimatedHours ?? '';
+    hoursField.addEventListener('input', () => {
+      const n = Number(hoursField.value);
+      state.estimatedHours = Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
+      updateSubmitState();
+      save();
+    });
+  }
+
+  document.querySelectorAll('.worth-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      const v = b.dataset.worth === 'yes';
+      state.worthIt = state.worthIt === v ? null : v;
+      updateSubmitState();
+      save();
+    });
+  });
+
   const termsCheck = document.getElementById('termsCheck');
   if (termsCheck) {
     termsCheck.addEventListener('change', () => {
@@ -656,6 +678,7 @@ function bind() {
   document.getElementById('resetBtn').addEventListener('click', () => {
     if (!confirm('모든 응답을 초기화합니다. 계속할까요?')) return;
     state.answers = {}; state.gates = {}; state.flags = {}; state.inputs = {}; state.memos = {};
+    state.worthIt = null;
     renderQuestions(); save(); updateUI();
   });
 
@@ -760,16 +783,41 @@ function updateSubmitState() {
   const btn = document.getElementById('submitBtn');
   if (!btn) return;
   const hasTopic = (state.topic || '').trim().length > 0;
+  const hasHours = Number.isFinite(state.estimatedHours) && state.estimatedHours > 0;
   const complete = isFullyAnswered();
-  btn.disabled = !termsAccepted || !hasTopic || isSubmitting || !complete || resultsRevealed;
+  const worthChosen = state.worthIt === true || state.worthIt === false;
+
+  // Worth section visibility: needs all answered + topic + hours + terms
+  const worthSec = document.getElementById('worthSection');
+  if (worthSec) {
+    const ready = complete && hasTopic && hasHours && termsAccepted;
+    worthSec.style.display = ready ? '' : 'none';
+    if (ready) {
+      const tEl = document.getElementById('worthTopic');
+      const hEl = document.getElementById('worthHours');
+      if (tEl) tEl.textContent = state.topic.trim();
+      if (hEl) hEl.textContent = String(state.estimatedHours);
+    }
+  }
+  document.querySelectorAll('.worth-btn').forEach(b => {
+    const v = b.dataset.worth === 'yes';
+    b.classList.toggle('selected', state.worthIt === v);
+  });
+
+  btn.disabled = !termsAccepted || !hasTopic || !hasHours || isSubmitting
+    || !complete || !worthChosen || resultsRevealed;
   if (resultsRevealed) {
     btn.textContent = '제출 완료';
   } else if (!complete) {
     btn.textContent = '모든 항목에 답하면 제출 가능';
   } else if (!hasTopic) {
     btn.textContent = '주제를 입력해 주세요';
+  } else if (!hasHours) {
+    btn.textContent = '예상 투자 시간을 입력해 주세요';
   } else if (!termsAccepted) {
     btn.textContent = '약관 동의 후 제출';
+  } else if (!worthChosen) {
+    btn.textContent = '마지막 확인에 답해 주세요';
   } else {
     btn.textContent = '제출하고 결과 보기';
   }
@@ -795,6 +843,8 @@ async function submitToServer() {
   const r = compute();
   const payload = {
     topic,
+    estimatedHours: state.estimatedHours,
+    worthIt: state.worthIt,
     mode: state.mode,
     types: state.types,
     track: state.track,

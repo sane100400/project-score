@@ -23,7 +23,9 @@ create table if not exists submissions (
   memos jsonb not null,
   vector text not null,
   terms_version text not null,
-  app_version text not null
+  app_version text not null,
+  estimated_hours integer,
+  worth_it boolean
 );
 
 create index if not exists submissions_created_at_idx on submissions (created_at desc);

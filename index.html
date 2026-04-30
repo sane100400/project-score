@@ -42,8 +42,12 @@
     </div>
     <div class="modes" id="modeGrid" role="group" aria-label="프로젝트 목적"></div>
     <div class="topic-input">
-      <label for="topicField" class="topic-input__label">프로젝트 주제 <small>(선택, 통계 제출 시 필수)</small></label>
+      <label for="topicField" class="topic-input__label">프로젝트 주제 <small>(통계 제출 시 필수)</small></label>
       <input type="text" id="topicField" class="topic-input__field" maxlength="200" placeholder="예: AI 기반 학습 캘린더 앱" autocomplete="off">
+    </div>
+    <div class="topic-input">
+      <label for="hoursField" class="topic-input__label">예상 투자 시간 <small>(총 시간 기준, 통계 제출 시 필수)</small></label>
+      <input type="number" id="hoursField" class="topic-input__field" min="1" max="10000" placeholder="예: 120" autocomplete="off">
     </div>
     <div class="type-selector">
       <span class="type-selector__label">프로젝트 성격<br><small>복수 선택 가능</small></span>
@@ -177,6 +181,31 @@
       </div>
     </div>
     <div class="flags" id="flagsList"></div>
+  </section>
+
+  <section class="section worth-section" id="worthSection" style="display:none">
+    <div class="worth-card">
+      <h2 class="worth-card__title">제출 전 마지막 확인</h2>
+      <p class="worth-card__lede">
+        점수를 보기 전에 스스로에게 한 번 더 물어보세요.
+      </p>
+      <p class="worth-card__question">
+        이 프로젝트(<strong id="worthTopic">—</strong>), 정말 <strong id="worthHours">—</strong>시간을 투자할 만큼의 가치가 있나요?
+      </p>
+      <p class="worth-card__hint">
+        점수가 낮아도 배움이 크다면 할 만하고, 점수가 높아도 시간 대비 결과물이 가볍다면 다시 생각해 볼 일입니다.
+      </p>
+      <div class="worth-card__actions">
+        <button type="button" class="worth-btn" data-worth="yes">
+          <span class="worth-btn__main">네, 투자할 가치가 있습니다</span>
+          <span class="worth-btn__sub">시작하겠습니다</span>
+        </button>
+        <button type="button" class="worth-btn" data-worth="no">
+          <span class="worth-btn__main">아니요, 다시 생각해 보겠습니다</span>
+          <span class="worth-btn__sub">주제를 다듬거나 시간을 줄입니다</span>
+        </button>
+      </div>
+    </div>
   </section>
 
   <section class="section">
