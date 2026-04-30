@@ -7,12 +7,16 @@ const state = {
   mode: 'build',
   types: ['dev'],
   track: 'both',   // 'white' | 'black' | 'both'
+  topic: '',
   answers: {},
   gates: {},
   flags: {},
   inputs: {},
   memos: {}
 };
+let termsAccepted = false;
+let isSubmitting = false;
+let resultsRevealed = false;
 let activeTab = 'white';
 
 function qTitle(q) {
@@ -542,7 +546,7 @@ function updateUI() {
 function setMode(mode) {
   if (!MODES[mode]) return;
   state.mode = mode;
-  updateUI(); save();
+  updateUI(); save(); updateSubmitState();
 }
 function toggleType(type) {
   if (!TYPES[type]) return;
@@ -555,12 +559,12 @@ function toggleType(type) {
 function setAnswer(qid, v) {
   if (state.answers[qid] === v) delete state.answers[qid];
   else state.answers[qid] = v;
-  updateUI(); save();
+  updateUI(); save(); updateSubmitState();
 }
 function setGate(gid, val) {
   if (state.gates[gid] === val) delete state.gates[gid];
   else state.gates[gid] = val;
-  updateUI(); save();
+  updateUI(); save(); updateSubmitState();
 }
 function toggleFlag(fid) {
   if (isFlagDisabled(fid)) return;
@@ -625,6 +629,29 @@ function bind() {
     const memo = e.target.closest('.memo-field');
     if (memo) { state.memos[memo.dataset.qid] = memo.value; save(); }
   });
+
+  const topicField = document.getElementById('topicField');
+  if (topicField) {
+    topicField.value = state.topic || '';
+    topicField.addEventListener('input', () => {
+      state.topic = topicField.value;
+      updateSubmitState();
+      save();
+    });
+  }
+
+  const termsCheck = document.getElementById('termsCheck');
+  if (termsCheck) {
+    termsCheck.addEventListener('change', () => {
+      termsAccepted = termsCheck.checked;
+      updateSubmitState();
+    });
+  }
+
+  const submitBtn = document.getElementById('submitBtn');
+  if (submitBtn) {
+    submitBtn.addEventListener('click', submitToServer);
+  }
 
   document.getElementById('resetBtn').addEventListener('click', () => {
     if (!confirm('모든 응답을 초기화합니다. 계속할까요?')) return;
@@ -717,6 +744,101 @@ function bind() {
   });
 }
 
+// ─── submission ──────────────────────────────────────────────
+
+function isFullyAnswered() {
+  const r = compute();
+  if (state.track !== 'black' && r.whiteAnswered < whiteQuestions.length) return false;
+  if (state.track !== 'white') {
+    if (r.blackAnswered < blackQuestions.length) return false;
+    if (r.answeredGates < GATES.length) return false;
+  }
+  return true;
+}
+
+function updateSubmitState() {
+  const btn = document.getElementById('submitBtn');
+  if (!btn) return;
+  const hasTopic = (state.topic || '').trim().length > 0;
+  const complete = isFullyAnswered();
+  btn.disabled = !termsAccepted || !hasTopic || isSubmitting || !complete || resultsRevealed;
+  if (resultsRevealed) {
+    btn.textContent = '제출 완료';
+  } else if (!complete) {
+    btn.textContent = '모든 항목에 답하면 제출 가능';
+  } else if (!hasTopic) {
+    btn.textContent = '주제를 입력해 주세요';
+  } else if (!termsAccepted) {
+    btn.textContent = '약관 동의 후 제출';
+  } else {
+    btn.textContent = '제출하고 결과 보기';
+  }
+}
+
+function setSubmitStatus(text, kind) {
+  const el = document.getElementById('submitStatus');
+  if (!el) return;
+  el.textContent = text || '';
+  el.dataset.kind = kind || '';
+}
+
+async function submitToServer() {
+  if (isSubmitting) return;
+  const topic = (state.topic || '').trim();
+  if (!topic) { setSubmitStatus('주제를 입력해 주세요.', 'error'); return; }
+  if (!termsAccepted) { setSubmitStatus('약관에 동의해 주세요.', 'error'); return; }
+
+  isSubmitting = true;
+  updateSubmitState();
+  setSubmitStatus('제출 중…', 'pending');
+
+  const r = compute();
+  const payload = {
+    topic,
+    mode: state.mode,
+    types: state.types,
+    track: state.track,
+    whiteScore: +r.whiteScore.toFixed(2),
+    blackScore: +r.blackScore.toFixed(2),
+    whiteDecision: r.whiteDecision,
+    blackDecision: r.blackDecision,
+    passedGates: r.passedGates,
+    penalties: +r.penalties.toFixed(2),
+    answers: state.answers,
+    gates: state.gates,
+    flags: state.flags,
+    inputs: state.inputs,
+    memos: state.memos,
+    vector: buildVector(),
+    termsAccepted: true
+  };
+
+  try {
+    const res = await fetch('/api/submit', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      resultsRevealed = true;
+      document.body.classList.remove('results-locked');
+      setSubmitStatus('제출 완료. 결과가 공개됩니다.', 'ok');
+      const target = state.track === 'black'
+        ? document.getElementById('blackScorePanel')
+        : document.getElementById('whiteScorePanel');
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      const data = await res.json().catch(() => ({}));
+      setSubmitStatus(`제출 실패: ${data.error || res.status}`, 'error');
+    }
+  } catch (e) {
+    setSubmitStatus(`네트워크 오류: ${e.message}`, 'error');
+  } finally {
+    isSubmitting = false;
+    updateSubmitState();
+  }
+}
+
 // ─── init ────────────────────────────────────────────────────
 
 renderModes();
@@ -726,5 +848,7 @@ renderGates();
 try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
 renderQuestions();
 renderFlags();
+document.body.classList.add('results-locked');
 bind();
 updateUI();
+updateSubmitState();

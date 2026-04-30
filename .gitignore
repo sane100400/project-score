@@ -4,3 +4,5 @@ KakaoTalk_*
 deep-research-report.md
 .DS_Store
 node_modules/
+.vercel
+.env*.local

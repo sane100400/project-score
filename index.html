@@ -25,7 +25,7 @@
   <p class="hero__lede">
     주제가 새롭고 세련된지(<strong>♔ White</strong>), 실행할 준비가 됐는지(<strong>♚ Black</strong>)
     — 필요한 트랙만 골라서 진단하세요. <strong>21개 질문</strong>에 솔직하게 답하면
-    해당 트랙의 판정이 나옵니다. 점수가 낮다고 나쁜 게 아닙니다.
+    해당 트랙의 판정이 나옵니다. <strong>점수는 모든 항목을 채우고 제출해야 공개됩니다.</strong>
     목적이 <strong>"배우려고"</strong>라면 기준 자체가 달라지니, 먼저 목적부터 고르세요.
   </p>
 </section>
@@ -41,6 +41,10 @@
       </div>
     </div>
     <div class="modes" id="modeGrid" role="group" aria-label="프로젝트 목적"></div>
+    <div class="topic-input">
+      <label for="topicField" class="topic-input__label">프로젝트 주제 <small>(선택, 통계 제출 시 필수)</small></label>
+      <input type="text" id="topicField" class="topic-input__field" maxlength="200" placeholder="예: AI 기반 학습 캘린더 앱" autocomplete="off">
+    </div>
     <div class="type-selector">
       <span class="type-selector__label">프로젝트 성격<br><small>복수 선택 가능</small></span>
       <div class="type-grid" id="typeGrid" role="group" aria-label="프로젝트 타입"></div>
@@ -176,8 +180,22 @@
   </section>
 
   <section class="section">
+    <div class="submit-box" id="submitBox">
+      <div class="submit-box__head">
+        <h3 class="submit-box__title">익명 통계 제출</h3>
+        <p class="submit-box__desc">입력한 주제와 응답을 익명으로 서버에 보냅니다. 식별 정보(이름·IP 등)는 저장하지 않습니다. <a href="/terms.html" target="_blank" rel="noopener">이용약관</a> · <a href="/privacy.html" target="_blank" rel="noopener">개인정보처리방침</a></p>
+      </div>
+      <label class="submit-box__consent">
+        <input type="checkbox" id="termsCheck">
+        <span>약관과 개인정보처리방침에 동의하며, 입력 내용에 민감정보·영업비밀이 없음을 확인합니다.</span>
+      </label>
+      <div class="submit-box__actions">
+        <button class="action-btn primary" id="submitBtn" disabled>익명 통계 제출</button>
+        <span class="submit-box__status" id="submitStatus" aria-live="polite"></span>
+      </div>
+    </div>
     <div class="actions">
-      <button class="action-btn primary" id="exportMdBtn">결과 저장 (Markdown)</button>
+      <button class="action-btn" id="exportMdBtn">결과 저장 (Markdown)</button>
       <button class="action-btn" id="exportBtn">JSON 저장</button>
       <button class="action-btn text" id="resetBtn">초기화</button>
     </div>
@@ -201,7 +219,8 @@
 <footer>
   <div class="footer__inner">
     <div class="footer__title">PROJECT:SCORE · V3.0</div>
-    <p>답변은 이 브라우저에만 저장됩니다 (localStorage). 서버로 보내지 않습니다.</p>
+    <p>답변은 이 브라우저에만 저장됩니다. "익명 통계 제출" 버튼을 누른 경우에만 서버로 전송됩니다.</p>
+    <p class="footer__links"><a href="/terms.html">이용약관</a> · <a href="/privacy.html">개인정보처리방침</a></p>
     <p class="footer__meta">LINC 3.0 CAPSTONE · GOOGLE SOLUTION CHALLENGE · MICROSOFT IMAGINE CUP · OECD FRASCATI MANUAL 2015 · NASA TRL · ISO/IEC/IEEE 29148 · AAC&U PROBLEM SOLVING · GOLD STANDARD PBL</p>
   </div>
 </footer>
