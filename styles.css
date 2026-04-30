@@ -1620,38 +1620,56 @@ footer {
 .footer__links a { color: var(--fg-2); text-decoration: underline; margin: 0 4px; }
 
 /* ─── Results lock ────────────────────────────────────────── */
+/* Locked-state visuals: text replaced via JS with em-dash;
+   axis bars dim to a thin dashed track. */
+body.results-locked .axis__track {
+  background: transparent;
+  border-top: 1px dashed var(--bg-3);
+  border-bottom: 1px dashed var(--bg-3);
+}
+body.results-locked .tab-panel--white .axis__track {
+  border-top-color: rgba(0, 0, 0, 0.18);
+  border-bottom-color: rgba(0, 0, 0, 0.18);
+}
+body.results-locked .axis__fill { width: 0 !important; }
 body.results-locked .score__value,
-body.results-locked .decision__ko,
-body.results-locked .decision__desc,
-body.results-locked .decision__tag,
 body.results-locked .axis__value,
-body.results-locked .axis__fill,
 body.results-locked .gate-summary__val,
 body.results-locked .tab__score,
-body.results-locked .score-fab__val,
-body.results-locked .score-fab__tone {
-  filter: blur(8px);
-  user-select: none;
-  pointer-events: none;
+body.results-locked .score-fab__val {
+  color: var(--fg-3);
+  letter-spacing: 0.04em;
 }
-body.results-locked .decision { position: relative; }
-body.results-locked .decision::after {
-  content: "제출 후 공개";
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0,0,0,0.6);
-  color: var(--fg-0);
-  font-size: 14px;
-  letter-spacing: 0.08em;
-  border-radius: 4px;
-  pointer-events: none;
+body.results-locked .tab-panel--white .score__value,
+body.results-locked .tab-panel--white .axis__value {
+  color: rgba(0, 0, 0, 0.42);
 }
-body.results-locked .tab-panel--white .decision::after {
-  background: rgba(255,255,255,0.7);
-  color: rgba(0,0,0,0.9);
+.decision.sealed {
+  background: var(--bg-1);
+  border: 1px dashed var(--bg-3);
+  color: var(--fg-2);
+}
+.tab-panel--white .decision.sealed {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.2);
+  color: rgba(0, 0, 0, 0.65);
+}
+.decision.sealed .decision__tag { opacity: 0.6; }
+.decision.sealed .decision__ko { opacity: 0.85; }
+
+/* Reveal animation */
+@keyframes reveal-fade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+body:not(.results-locked) .score__value,
+body:not(.results-locked) .decision:not(.sealed),
+body:not(.results-locked) .axis__value,
+body:not(.results-locked) .axis__fill,
+body:not(.results-locked) .gate-summary__val,
+body:not(.results-locked) .tab__score,
+body:not(.results-locked) .score-fab__val {
+  animation: reveal-fade 0.5s ease-out;
 }
 
 /* ─── Worth-it confirmation ──────────────────────────────── */

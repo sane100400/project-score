@@ -450,6 +450,15 @@ function setTab(tab) {
 }
 
 function updateDecisionBadge(el, decision) {
+  if (!resultsRevealed) {
+    el.className = 'decision sealed';
+    el.innerHTML = `
+      <span class="decision__tag">SEALED</span>
+      <div class="decision__ko">결과 봉인</div>
+      <span class="decision__desc">제출하면 판정이 공개됩니다</span>
+    `;
+    return;
+  }
   if (decision) {
     const d = DECISIONS[decision];
     el.className = `decision ${decision}`;
@@ -467,6 +476,9 @@ function updateDecisionBadge(el, decision) {
     `;
   }
 }
+
+const DASH = '—';
+function fmtScore(n) { return resultsRevealed ? n.toFixed(1) : DASH; }
 
 function updateUI() {
   document.querySelectorAll('.mode').forEach(c => {
@@ -498,7 +510,7 @@ function updateUI() {
   const r = compute();
 
   // ♔ White score panel
-  document.getElementById('whiteScoreValue').textContent = r.whiteScore.toFixed(1);
+  document.getElementById('whiteScoreValue').textContent = fmtScore(r.whiteScore);
   const whitePct = (r.whiteAnswered / whiteQuestions.length) * 100;
   document.getElementById('whiteProgressFill').style.width = `${whitePct}%`;
   document.getElementById('whiteSublabel').textContent = `답변 ${r.whiteAnswered} / ${whiteQuestions.length}`;
@@ -506,7 +518,7 @@ function updateUI() {
   updateDecisionBadge(document.getElementById('whiteDecisionBadge'), r.whiteDecision);
 
   // ♚ Black score panel
-  document.getElementById('blackScoreValue').textContent = r.blackScore.toFixed(1);
+  document.getElementById('blackScoreValue').textContent = fmtScore(r.blackScore);
   const blackTotal = blackQuestions.length + GATES.length;
   const blackDone = r.blackAnswered + r.answeredGates;
   const blackPct = (blackDone / blackTotal) * 100;
@@ -514,12 +526,13 @@ function updateUI() {
   document.getElementById('blackSublabel').textContent =
     `답변 ${r.blackAnswered} / ${blackQuestions.length} · 게이트 ${r.answeredGates} / ${GATES.length}`;
   document.getElementById('blackPctLabel').textContent = `${Math.round(blackPct)}%`;
-  document.getElementById('gateScoreVal').textContent = `${r.gateScore.toFixed(1)} / 2.0`;
+  document.getElementById('gateScoreVal').textContent = resultsRevealed
+    ? `${r.gateScore.toFixed(1)} / 2.0` : `${DASH} / 2.0`;
   updateDecisionBadge(document.getElementById('blackDecisionBadge'), r.blackDecision);
 
   // Tab bar scores
-  document.getElementById('whiteTabScore').textContent = r.whiteScore.toFixed(1);
-  document.getElementById('blackTabScore').textContent = r.blackScore.toFixed(1);
+  document.getElementById('whiteTabScore').textContent = fmtScore(r.whiteScore);
+  document.getElementById('blackTabScore').textContent = fmtScore(r.blackScore);
 
   // FAB scores — show only relevant track(s)
   const fabWhite = document.getElementById('scoreFabWhite');
@@ -528,8 +541,8 @@ function updateUI() {
   if (fabWhite) fabWhite.style.display = (state.track === 'black') ? 'none' : '';
   if (fabBlack) fabBlack.style.display = (state.track === 'white') ? 'none' : '';
   if (fabSep)   fabSep.style.display   = (state.track === 'both')  ? ''     : 'none';
-  document.getElementById('scoreFabWhiteVal').textContent = r.whiteScore.toFixed(1);
-  document.getElementById('scoreFabBlackVal').textContent = r.blackScore.toFixed(1);
+  document.getElementById('scoreFabWhiteVal').textContent = fmtScore(r.whiteScore);
+  document.getElementById('scoreFabBlackVal').textContent = fmtScore(r.blackScore);
 
   // Axis bars
   for (const a of Object.values(AXES)) {
@@ -538,8 +551,8 @@ function updateUI() {
     const pct = max > 0 ? Math.min(100, (pts / max) * 100) : 0;
     const fill = document.querySelector(`.axis__fill[data-axis="${a.code}"]`);
     const val  = document.querySelector(`[data-axis-value="${a.code}"]`);
-    if (fill) fill.style.width = `${pct}%`;
-    if (val)  val.textContent  = `${pts.toFixed(1)} / ${max}`;
+    if (fill) fill.style.width = resultsRevealed ? `${pct}%` : '0%';
+    if (val)  val.textContent  = resultsRevealed ? `${pts.toFixed(1)} / ${max}` : `${DASH} / ${max}`;
   }
 }
 
@@ -872,6 +885,7 @@ async function submitToServer() {
     if (res.ok) {
       resultsRevealed = true;
       document.body.classList.remove('results-locked');
+      updateUI();
       setSubmitStatus('제출 완료. 결과가 공개됩니다.', 'ok');
       const target = state.track === 'black'
         ? document.getElementById('blackScorePanel')
