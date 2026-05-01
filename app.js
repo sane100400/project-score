@@ -231,59 +231,46 @@ function renderChecksHTML() {
       </div>
       <div class="check__hint">${c.hint}</div>
 
-      <div class="check__inputs">
-        <label class="check-input">
-          <span class="check-input__label">${c.peopleLabel}</span>
-          <span class="check-input__field-wrap">
-            <input type="number" min="0" step="1" class="check-input__field"
-              data-cid="${c.id}" data-check-field="people" placeholder="0" value="${people}">
-            <span class="check-input__unit">${peopleUnit}</span>
-          </span>
-        </label>
-        <label class="check-input">
-          <span class="check-input__label">${c.hoursPerDayLabel}</span>
-          <span class="check-input__field-wrap">
-            <input type="number" min="0" step="0.5" class="check-input__field"
-              data-cid="${c.id}" data-check-field="hoursPerDay" placeholder="0" value="${hpd}">
-            <span class="check-input__unit">${hpdUnit}</span>
-          </span>
-        </label>
+      <div class="check__inline">
+        <span class="ci">
+          <span class="ci__lbl">${c.peopleLabel}</span>
+          <input type="number" min="0" step="1" class="ci__field"
+            data-cid="${c.id}" data-check-field="people" placeholder="0" value="${people}">
+          <span class="ci__unit">${peopleUnit}</span>
+        </span>
+        <span class="ci__sep">·</span>
+        <span class="ci">
+          <span class="ci__lbl">${c.hoursPerDayLabel}</span>
+          <input type="number" min="0" step="0.5" class="ci__field"
+            data-cid="${c.id}" data-check-field="hoursPerDay" placeholder="0" value="${hpd}">
+          <span class="ci__unit">${hpdUnit}</span>
+        </span>
+        <span class="ci__sep">·</span>
+        <span class="ci ci--date">
+          <span class="ci__lbl">${c.startLabel}</span>
+          <input type="date" class="ci__field ci__field--date"
+            data-cid="${c.id}" data-check-field="startDate" value="${startDate}">
+        </span>
+        <span class="ci__arrow">→</span>
+        <span class="ci ci--date">
+          <span class="ci__lbl">${c.endLabel}</span>
+          <input type="date" class="ci__field ci__field--date"
+            data-cid="${c.id}" data-check-field="endDate" value="${endDate}">
+        </span>
+        <span class="ci__days" data-check-days="${c.id}">${
+          workdays !== null
+            ? `평일 <strong>${workdays}</strong>일${totalDays !== null ? ` / 전체 ${totalDays}일` : ''}`
+            : '평일 —일'
+        }</span>
       </div>
 
-      <div class="check__inputs check__inputs--dates">
-        <label class="check-input">
-          <span class="check-input__label">${c.startLabel}</span>
-          <span class="check-input__field-wrap">
-            <input type="date" class="check-input__field check-input__field--date"
-              data-cid="${c.id}" data-check-field="startDate" value="${startDate}">
-          </span>
-        </label>
-        <label class="check-input">
-          <span class="check-input__label">${c.endLabel}</span>
-          <span class="check-input__field-wrap">
-            <input type="date" class="check-input__field check-input__field--date"
-              data-cid="${c.id}" data-check-field="endDate" value="${endDate}">
-          </span>
-        </label>
-        <div class="check-input check-days" data-check-days="${c.id}">
-          <span class="check-input__label">작업일수</span>
-          <div class="check-days__val">
-            <span class="check-days__num">${workdays !== null ? workdays.toLocaleString() : '—'}</span>
-            <span class="check-days__unit">평일</span>
-            <span class="check-days__sub">${totalDays !== null ? `(전체 ${totalDays}일)` : ''}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="check__calc" data-check-calc="${c.id}">
-        <div class="check__calc-total">
-          <span class="check__calc-mm" data-check-hours-num="${c.id}">${hours !== null ? Math.round(hours).toLocaleString() : '—'}</span>
-          <span class="check__calc-unit">시간</span>
-        </div>
-        <div class="check__calc-sub" data-check-breakdown="${c.id}">${
+      <div class="check__hero" data-check-calc="${c.id}">
+        <div class="check__hero-num" data-check-hours-num="${c.id}">${hours !== null ? Math.round(hours).toLocaleString() : '—'}</div>
+        <div class="check__hero-unit">시간</div>
+        <div class="check__hero-sub" data-check-breakdown="${c.id}">${
           ready
             ? `${Number(people)}명 × ${workdays}일(평일) × ${Number(hpd)}시간`
-            : '인원 × 작업일수(평일) × 하루 작업시간'
+            : '인원 × 작업일수 × 하루 시간'
         }</div>
       </div>
 
@@ -791,10 +778,9 @@ function setCheckField(cid, field, value) {
       : '인원 × 작업일수(평일) × 하루 작업시간';
   });
   document.querySelectorAll(`[data-check-days="${cid}"]`).forEach(el => {
-    const numEl = el.querySelector('.check-days__num');
-    const subEl = el.querySelector('.check-days__sub');
-    if (numEl) numEl.textContent = workdays !== null ? workdays.toLocaleString() : '—';
-    if (subEl) subEl.textContent = totalDays !== null ? `(전체 ${totalDays}일)` : '';
+    el.innerHTML = workdays !== null
+      ? `평일 <strong>${workdays}</strong>일${totalDays !== null ? ` / 전체 ${totalDays}일` : ''}`
+      : '평일 —일';
   });
 
   // Confirm label + disabled state
