@@ -1866,7 +1866,8 @@ body:not(.results-locked) .score-fab__val {
   border-color: var(--fg-1);
   background: var(--bg-3);
 }
-.check__calc-row {
+.check__calc-row,
+.check__calc-total {
   display: flex;
   align-items: baseline;
   justify-content: center;

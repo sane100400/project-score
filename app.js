@@ -236,18 +236,14 @@ function renderChecksHTML() {
       </div>
 
       <div class="check__calc" data-check-calc="${c.id}">
-        <div class="check__calc-row">
-          <span class="check__calc-num" data-calc-people="${c.id}">${Number(people) > 0 ? people : '—'}</span>
-          <span class="check__calc-op">×</span>
-          <span class="check__calc-num" data-calc-months="${c.id}">${Number(months) > 0 ? months : '—'}</span>
-          <span class="check__calc-eq">=</span>
-          <span class="check__calc-mm" data-check-mm="${c.id}">${mm !== null ? mm.toFixed(1) : '—'}</span>
-          <span class="check__calc-unit">MM</span>
+        <div class="check__calc-total">
+          <span class="check__calc-mm" data-check-hours-num="${c.id}">${hours !== null ? Math.round(hours).toLocaleString() : '—'}</span>
+          <span class="check__calc-unit">시간</span>
         </div>
-        <div class="check__calc-sub" data-check-hours="${c.id}">${
-          hours !== null
-            ? `≈ ${Math.round(hours).toLocaleString()}시간 (하루 ${Number(hpd)}시간 × ${DAYS_PER_MONTH}일/월 기준)`
-            : `≈ —시간 (하루 작업시간 × ${DAYS_PER_MONTH}일/월 기준)`
+        <div class="check__calc-sub" data-check-breakdown="${c.id}">${
+          ready
+            ? `${Number(people)}명 × ${Number(months)}개월 × ${DAYS_PER_MONTH}일 × ${Number(hpd)}시간`
+            : '인원 × 개월 × 20일 × 하루 작업시간'
         }</div>
       </div>
 
@@ -740,19 +736,13 @@ function setCheckField(cid, field, value) {
   const ready = isCheckReady(c);
 
   // Calc display
-  document.querySelectorAll(`[data-check-mm="${cid}"]`).forEach(el => {
-    el.textContent = mm !== null ? mm.toFixed(1) : '—';
+  document.querySelectorAll(`[data-check-hours-num="${cid}"]`).forEach(el => {
+    el.textContent = hours !== null ? Math.round(hours).toLocaleString() : '—';
   });
-  document.querySelectorAll(`[data-calc-people="${cid}"]`).forEach(el => {
-    el.textContent = Number(c.people) > 0 ? c.people : '—';
-  });
-  document.querySelectorAll(`[data-calc-months="${cid}"]`).forEach(el => {
-    el.textContent = Number(c.months) > 0 ? c.months : '—';
-  });
-  document.querySelectorAll(`[data-check-hours="${cid}"]`).forEach(el => {
-    el.textContent = hours !== null
-      ? `≈ ${Math.round(hours).toLocaleString()}시간 (하루 ${Number(c.hoursPerDay)}시간 × ${DAYS_PER_MONTH}일/월 기준)`
-      : `≈ —시간 (하루 작업시간 × ${DAYS_PER_MONTH}일/월 기준)`;
+  document.querySelectorAll(`[data-check-breakdown="${cid}"]`).forEach(el => {
+    el.textContent = ready
+      ? `${Number(c.people)}명 × ${Number(c.months)}개월 × ${DAYS_PER_MONTH}일 × ${Number(c.hoursPerDay)}시간`
+      : '인원 × 개월 × 20일 × 하루 작업시간';
   });
 
   // Confirm label + disabled state
