@@ -272,6 +272,22 @@ for (const item of splitByH3(sections['질문'] || '')) {
   questions.push(q);
 }
 
+// — Checks (필수체크: 점수 미반영, 제출 전 필수 확인) —
+const checks = [];
+for (const item of splitByH3(sections['필수체크'] || '')) {
+  validateId(item.id, '필수체크');
+  const p = parseProps(item.body);
+  if (!p.title) fail(`필수체크 ${item.id}: title 필수`);
+  checks.push({
+    id: item.id,
+    title: sanitize(p.title || ''),
+    hint: sanitize(p.hint || ''),
+    peopleLabel: sanitize(p.peopleLabel || '투입 인원 (명)'),
+    monthsLabel: sanitize(p.monthsLabel || '기간 (개월)'),
+    confirmLabel: sanitize(p.confirmLabel || '검토 완료')
+  });
+}
+
 // — Gates —
 const gates = [];
 for (const item of splitByH3(sections['게이트'] || '')) {
@@ -358,6 +374,8 @@ const js = [
   '',
   `export const QUESTIONS = ${JSON.stringify(questions, null, 2)};`,
   '',
+  `export const CHECKS = ${JSON.stringify(checks, null, 2)};`,
+  '',
   `export const GATES = ${JSON.stringify(gates, null, 2)};`,
   '',
   `export const FLAGS = ${JSON.stringify(flags, null, 2)};`,
@@ -367,4 +385,4 @@ const js = [
 ].join('\n');
 
 fs.writeFileSync(DEST, js, 'utf8');
-console.log(`✓ questions.js 생성 완료 (질문 ${questions.length}개, 게이트 ${gates.length}개, 플래그 ${flags.length}개)`);
+console.log(`✓ questions.js 생성 완료 (질문 ${questions.length}개, 게이트 ${gates.length}개, 필수체크 ${checks.length}개, 플래그 ${flags.length}개)`);

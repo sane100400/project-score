@@ -1,5 +1,5 @@
 // PROJECT SCORE v3.0 — Dual Track White/Black
-import { MODES, TYPES, AXES, QUESTIONS, GATES, FLAGS, DECISIONS } from './questions.js';
+import { MODES, TYPES, AXES, QUESTIONS, CHECKS, GATES, FLAGS, DECISIONS } from './questions.js';
 
 const STORAGE_KEY = 'project-score-v3.0';
 
@@ -14,7 +14,8 @@ const state = {
   gates: {},
   flags: {},
   inputs: {},
-  memos: {}
+  memos: {},
+  checks: {}
 };
 let termsAccepted = false;
 let isSubmitting = false;
@@ -156,6 +157,57 @@ function renderQuestionHTML(questions) {
 function renderQuestions() {
   document.getElementById('whiteQuestionsList').innerHTML = renderQuestionHTML(whiteQuestions);
   document.getElementById('blackQuestionsList').innerHTML = renderQuestionHTML(blackQuestions);
+}
+
+function getCheck(cid) {
+  if (!state.checks[cid]) state.checks[cid] = { people: null, months: null, confirmed: false };
+  return state.checks[cid];
+}
+
+function renderChecksHTML() {
+  return CHECKS.map(c => {
+    const cur = state.checks[c.id] || {};
+    const people = cur.people ?? '';
+    const months = cur.months ?? '';
+    const mm = (Number(people) > 0 && Number(months) > 0) ? (Number(people) * Number(months)) : null;
+    const confirmed = !!cur.confirmed;
+    return `
+    <div class="check" data-cid="${c.id}">
+      <div class="check__head">
+        <span class="check__tag">필수 · 점수 미반영</span>
+        <h3 class="check__title">${c.title}</h3>
+      </div>
+      <div class="check__hint">${c.hint}</div>
+      <div class="check__inputs">
+        <div class="input-row">
+          <span class="input-row__label">${c.peopleLabel}</span>
+          <input type="number" min="0" class="input-row__field input-row__field--number"
+            data-cid="${c.id}" data-check-field="people" placeholder="0" value="${people}">
+        </div>
+        <div class="input-row">
+          <span class="input-row__label">${c.monthsLabel}</span>
+          <input type="number" min="0" class="input-row__field input-row__field--number"
+            data-cid="${c.id}" data-check-field="months" placeholder="0" value="${months}">
+        </div>
+      </div>
+      <div class="check__result">
+        <span class="check__result-label">맨먼스 (인원 × 개월)</span>
+        <span class="check__result-val" data-check-mm="${c.id}">${mm !== null ? mm.toFixed(1) + ' MM' : '—'}</span>
+      </div>
+      <button type="button" class="check__confirm ${confirmed ? 'selected' : ''}" data-check-confirm="${c.id}">
+        <span class="check__confirm-box" aria-hidden="true">${confirmed ? '✓' : ''}</span>
+        <span class="check__confirm-label">${c.confirmLabel}</span>
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function renderChecks() {
+  const html = renderChecksHTML();
+  const w = document.getElementById('whiteChecksList');
+  const b = document.getElementById('blackChecksList');
+  if (w) w.innerHTML = html;
+  if (b) b.innerHTML = html;
 }
 
 function visibleFlags() {
@@ -357,6 +409,24 @@ function buildMarkdown() {
     renderQBlock(blackQuestions);
   }
 
+  // 필수체크
+  if (CHECKS.length) {
+    lines.push(`## 필수 체크`);
+    lines.push('');
+    for (const c of CHECKS) {
+      const cur = state.checks[c.id] || {};
+      const mm = (Number(cur.people) > 0 && Number(cur.months) > 0) ? (Number(cur.people) * Number(cur.months)).toFixed(1) : '—';
+      const mark = cur.confirmed ? '✅ 검토 완료' : '➖ 미확인';
+      lines.push(`### ${c.id}. ${c.title}`);
+      lines.push('');
+      lines.push(`- **인원**: ${cur.people ?? '—'} 명`);
+      lines.push(`- **기간**: ${cur.months ?? '—'} 개월`);
+      lines.push(`- **맨먼스**: ${mm} MM`);
+      lines.push(`- **상태**: ${mark}`);
+      lines.push('');
+    }
+  }
+
   // Flags
   const active = FLAGS.filter(f => state.flags[f.id] && !isFlagDisabled(f.id));
   if (active.length) {
@@ -400,6 +470,13 @@ function buildVector() {
   }
   const activeFlags = FLAGS.filter(f => state.flags[f.id] && !isFlagDisabled(f.id)).map(f => f.id);
   if (activeFlags.length) parts.push(`FL:${activeFlags.join(',')}`);
+  for (const c of CHECKS) {
+    const cur = state.checks[c.id];
+    const p = cur?.people ?? '-';
+    const m = cur?.months ?? '-';
+    const ok = cur?.confirmed ? 'Y' : 'N';
+    parts.push(`${c.id}:${p}x${m}=${ok}`);
+  }
   return parts.join('/');
 }
 
@@ -586,6 +663,28 @@ function toggleFlag(fid) {
   state.flags[fid] = !state.flags[fid];
   updateUI(); save();
 }
+function setCheckField(cid, field, value) {
+  const c = getCheck(cid);
+  const n = Number(value);
+  c[field] = Number.isFinite(n) && n > 0 ? n : null;
+  // Sync the matching input in the OTHER panel without full re-render (preserves focus)
+  document.querySelectorAll(`[data-cid="${cid}"][data-check-field="${field}"]`).forEach(el => {
+    if (el.value !== String(value)) el.value = value;
+  });
+  // Update mm result displays in both panels
+  const mm = (Number(c.people) > 0 && Number(c.months) > 0) ? (Number(c.people) * Number(c.months)) : null;
+  document.querySelectorAll(`[data-check-mm="${cid}"]`).forEach(el => {
+    el.textContent = mm !== null ? mm.toFixed(1) + ' MM' : '—';
+  });
+  save(); updateSubmitState();
+}
+function toggleCheckConfirm(cid) {
+  const c = getCheck(cid);
+  c.confirmed = !c.confirmed;
+  renderChecks();
+  updateUI(); save(); updateSubmitState();
+}
+
 function setInput(qid, idx, value) {
   if (!state.inputs[qid]) state.inputs[qid] = [];
   state.inputs[qid][idx] = value;
@@ -635,9 +734,15 @@ function bind() {
 
     const flag = e.target.closest('.flag');
     if (flag) { toggleFlag(flag.dataset.fid); return; }
+
+    const checkBtn = e.target.closest('[data-check-confirm]');
+    if (checkBtn) { toggleCheckConfirm(checkBtn.dataset.checkConfirm); return; }
   });
 
   document.addEventListener('input', (e) => {
+    const checkField = e.target.closest('[data-check-field]');
+    if (checkField) { setCheckField(checkField.dataset.cid, checkField.dataset.checkField, checkField.value); return; }
+
     const field = e.target.closest('.input-row__field');
     if (field) { setInput(field.dataset.qid, +field.dataset.inputIdx, field.value); return; }
 
@@ -690,9 +795,9 @@ function bind() {
 
   document.getElementById('resetBtn').addEventListener('click', () => {
     if (!confirm('모든 응답을 초기화합니다. 계속할까요?')) return;
-    state.answers = {}; state.gates = {}; state.flags = {}; state.inputs = {}; state.memos = {};
+    state.answers = {}; state.gates = {}; state.flags = {}; state.inputs = {}; state.memos = {}; state.checks = {};
     state.worthIt = null;
-    renderQuestions(); save(); updateUI();
+    renderQuestions(); renderChecks(); save(); updateUI();
   });
 
   const fab = document.getElementById('scoreFab');
@@ -789,6 +894,11 @@ function isFullyAnswered() {
     if (r.blackAnswered < blackQuestions.length) return false;
     if (r.answeredGates < GATES.length) return false;
   }
+  for (const c of CHECKS) {
+    const cur = state.checks[c.id];
+    if (!cur || !cur.confirmed) return false;
+    if (!(Number(cur.people) > 0) || !(Number(cur.months) > 0)) return false;
+  }
   return true;
 }
 
@@ -872,6 +982,7 @@ async function submitToServer() {
     flags: state.flags,
     inputs: state.inputs,
     memos: state.memos,
+    checks: state.checks,
     vector: buildVector(),
     termsAccepted: true
   };
@@ -911,6 +1022,7 @@ renderAxisBars();
 renderGates();
 try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
 renderQuestions();
+renderChecks();
 renderFlags();
 document.body.classList.add('results-locked');
 bind();
