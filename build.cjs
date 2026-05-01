@@ -282,9 +282,11 @@ for (const item of splitByH3(sections['필수체크'] || '')) {
     id: item.id,
     title: sanitize(p.title || ''),
     hint: sanitize(p.hint || ''),
-    peopleLabel: sanitize(p.peopleLabel || '투입 인원 (명)'),
-    monthsLabel: sanitize(p.monthsLabel || '기간 (개월)'),
-    confirmLabel: sanitize(p.confirmLabel || '검토 완료')
+    peopleLabel: sanitize(p.peopleLabel || '투입 인원'),
+    peopleUnit: sanitize(p.peopleUnit || '명'),
+    monthsLabel: sanitize(p.monthsLabel || '기간'),
+    monthsUnit: sanitize(p.monthsUnit || '개월'),
+    confirmLabel: sanitize(p.confirmLabel || '이 규모가 현실적이라고 판단합니다')
   });
 }
 

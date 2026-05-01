@@ -734,11 +734,13 @@ export const QUESTIONS = [
 export const CHECKS = [
   {
     "id": "MM",
-    "title": "맨먼스(Man-Month) 검토",
-    "hint": "투입 인원과 기간(개월)을 입력하면 맨먼스가 자동 계산됩니다. 점수에는 반영되지 않지만, 일정·예산이 현실적인지 직접 판단한 뒤 제출 전 반드시 확인해 주세요.",
-    "peopleLabel": "투입 인원 (명)",
-    "monthsLabel": "기간 (개월)",
-    "confirmLabel": "맨먼스를 검토했고 일정이 현실적이라고 판단합니다"
+    "title": "투입 규모 점검",
+    "hint": "인원과 기간(개월)을 적으면 한 사람이 얼마나 일해야 끝나는지(맨먼스)가 자동으로 계산됩니다. 점수에는 반영되지 않지만, 이 규모가 현실적으로 감당 가능한지 스스로 판단해야 제출할 수 있습니다.",
+    "peopleLabel": "투입 인원",
+    "peopleUnit": "명",
+    "monthsLabel": "기간",
+    "monthsUnit": "개월",
+    "confirmLabel": "이 규모가 현실적이라고 판단합니다"
   }
 ];
 

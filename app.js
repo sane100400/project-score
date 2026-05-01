@@ -164,6 +164,16 @@ function getCheck(cid) {
   return state.checks[cid];
 }
 
+const HOURS_PER_MM = 160; // 표준 person-month: 8h × 20일
+
+function checkConfirmLabel(c, mm) {
+  if (mm !== null) {
+    const hours = Math.round(mm * HOURS_PER_MM);
+    return `정말 약 ${hours.toLocaleString()}시간을 투자할 만한 프로젝트입니까?`;
+  }
+  return c.confirmLabel || '이 규모가 현실적이라고 판단합니다';
+}
+
 function renderChecksHTML() {
   return CHECKS.map(c => {
     const cur = state.checks[c.id] || {};
@@ -171,32 +181,54 @@ function renderChecksHTML() {
     const months = cur.months ?? '';
     const mm = (Number(people) > 0 && Number(months) > 0) ? (Number(people) * Number(months)) : null;
     const confirmed = !!cur.confirmed;
+    const ready = mm !== null;
+    const peopleUnit = c.peopleUnit || '명';
+    const monthsUnit = c.monthsUnit || '개월';
+    const hours = ready ? Math.round(mm * HOURS_PER_MM) : null;
+
     return `
-    <div class="check" data-cid="${c.id}">
+    <div class="check ${ready ? 'is-ready' : ''}" data-cid="${c.id}">
       <div class="check__head">
         <span class="check__tag">필수 · 점수 미반영</span>
         <h3 class="check__title">${c.title}</h3>
       </div>
       <div class="check__hint">${c.hint}</div>
+
       <div class="check__inputs">
-        <div class="input-row">
-          <span class="input-row__label">${c.peopleLabel}</span>
-          <input type="number" min="0" class="input-row__field input-row__field--number"
-            data-cid="${c.id}" data-check-field="people" placeholder="0" value="${people}">
-        </div>
-        <div class="input-row">
-          <span class="input-row__label">${c.monthsLabel}</span>
-          <input type="number" min="0" class="input-row__field input-row__field--number"
-            data-cid="${c.id}" data-check-field="months" placeholder="0" value="${months}">
-        </div>
+        <label class="check-input">
+          <span class="check-input__label">${c.peopleLabel}</span>
+          <span class="check-input__field-wrap">
+            <input type="number" min="0" step="1" class="check-input__field"
+              data-cid="${c.id}" data-check-field="people" placeholder="0" value="${people}">
+            <span class="check-input__unit">${peopleUnit}</span>
+          </span>
+        </label>
+        <span class="check-op" aria-hidden="true">×</span>
+        <label class="check-input">
+          <span class="check-input__label">${c.monthsLabel}</span>
+          <span class="check-input__field-wrap">
+            <input type="number" min="0" step="1" class="check-input__field"
+              data-cid="${c.id}" data-check-field="months" placeholder="0" value="${months}">
+            <span class="check-input__unit">${monthsUnit}</span>
+          </span>
+        </label>
       </div>
-      <div class="check__result">
-        <span class="check__result-label">맨먼스 (인원 × 개월)</span>
-        <span class="check__result-val" data-check-mm="${c.id}">${mm !== null ? mm.toFixed(1) + ' MM' : '—'}</span>
+
+      <div class="check__calc" data-check-calc="${c.id}">
+        <div class="check__calc-row">
+          <span class="check__calc-num" data-calc-people="${c.id}">${ready ? people : '—'}</span>
+          <span class="check__calc-op">×</span>
+          <span class="check__calc-num" data-calc-months="${c.id}">${ready ? months : '—'}</span>
+          <span class="check__calc-eq">=</span>
+          <span class="check__calc-mm" data-check-mm="${c.id}">${ready ? mm.toFixed(1) : '—'}</span>
+          <span class="check__calc-unit">MM</span>
+        </div>
+        <div class="check__calc-sub" data-check-hours="${c.id}">${ready ? `≈ ${hours.toLocaleString()}시간 (1인 8h × 20일 기준)` : '인원과 기간을 입력하면 환산 시간이 표시됩니다'}</div>
       </div>
-      <button type="button" class="check__confirm ${confirmed ? 'selected' : ''}" data-check-confirm="${c.id}">
+
+      <button type="button" class="check__confirm ${confirmed ? 'selected' : ''} ${ready ? '' : 'is-disabled'}" data-check-confirm="${c.id}" ${ready ? '' : 'disabled'}>
         <span class="check__confirm-box" aria-hidden="true">${confirmed ? '✓' : ''}</span>
-        <span class="check__confirm-label">${c.confirmLabel}</span>
+        <span class="check__confirm-label" data-check-label="${c.id}">${checkConfirmLabel(c, mm)}</span>
       </button>
     </div>`;
   }).join('');
@@ -530,9 +562,9 @@ function updateDecisionBadge(el, decision) {
   if (!resultsRevealed) {
     el.className = 'decision sealed';
     el.innerHTML = `
-      <span class="decision__tag">SEALED</span>
-      <div class="decision__ko">결과 봉인</div>
-      <span class="decision__desc">제출하면 판정이 공개됩니다</span>
+      <span class="decision__tag">AFTER SUBMIT</span>
+      <div class="decision__ko">제출 후 공개</div>
+      <span class="decision__desc">제출하면 점수와 판정이 표시됩니다</span>
     `;
     return;
   }
@@ -667,19 +699,57 @@ function setCheckField(cid, field, value) {
   const c = getCheck(cid);
   const n = Number(value);
   c[field] = Number.isFinite(n) && n > 0 ? n : null;
+  const cdef = CHECKS.find(x => x.id === cid);
+
   // Sync the matching input in the OTHER panel without full re-render (preserves focus)
   document.querySelectorAll(`[data-cid="${cid}"][data-check-field="${field}"]`).forEach(el => {
     if (el.value !== String(value)) el.value = value;
   });
-  // Update mm result displays in both panels
+
   const mm = (Number(c.people) > 0 && Number(c.months) > 0) ? (Number(c.people) * Number(c.months)) : null;
+  const ready = mm !== null;
+  const hours = ready ? Math.round(mm * HOURS_PER_MM) : null;
+
+  // Calc display
   document.querySelectorAll(`[data-check-mm="${cid}"]`).forEach(el => {
-    el.textContent = mm !== null ? mm.toFixed(1) + ' MM' : '—';
+    el.textContent = ready ? mm.toFixed(1) : '—';
   });
+  document.querySelectorAll(`[data-calc-people="${cid}"]`).forEach(el => {
+    el.textContent = ready ? c.people : '—';
+  });
+  document.querySelectorAll(`[data-calc-months="${cid}"]`).forEach(el => {
+    el.textContent = ready ? c.months : '—';
+  });
+  document.querySelectorAll(`[data-check-hours="${cid}"]`).forEach(el => {
+    el.textContent = ready
+      ? `≈ ${hours.toLocaleString()}시간 (1인 8h × 20일 기준)`
+      : '인원과 기간을 입력하면 환산 시간이 표시됩니다';
+  });
+
+  // Confirm label + disabled state
+  document.querySelectorAll(`[data-check-label="${cid}"]`).forEach(el => {
+    el.textContent = checkConfirmLabel(cdef, mm);
+  });
+  document.querySelectorAll(`[data-check-confirm="${cid}"]`).forEach(btn => {
+    btn.classList.toggle('is-disabled', !ready);
+    btn.disabled = !ready;
+    if (!ready && c.confirmed) {
+      c.confirmed = false;
+      btn.classList.remove('selected');
+      const box = btn.querySelector('.check__confirm-box');
+      if (box) box.textContent = '';
+    }
+  });
+  // Toggle is-ready on the card
+  document.querySelectorAll(`.check[data-cid="${cid}"]`).forEach(el => {
+    el.classList.toggle('is-ready', ready);
+  });
+
   save(); updateSubmitState();
 }
 function toggleCheckConfirm(cid) {
   const c = getCheck(cid);
+  if (!(Number(c.people) > 0) || !(Number(c.months) > 0)) return;
   c.confirmed = !c.confirmed;
   renderChecks();
   updateUI(); save(); updateSubmitState();
