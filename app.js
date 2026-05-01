@@ -160,23 +160,45 @@ function renderQuestions() {
 }
 
 function getCheck(cid) {
-  if (!state.checks[cid]) state.checks[cid] = { people: null, months: null, hoursPerDay: null, confirmed: false };
+  if (!state.checks[cid]) state.checks[cid] = { people: null, startDate: '', endDate: '', hoursPerDay: null, confirmed: false };
   return state.checks[cid];
 }
 
-const DAYS_PER_MONTH = 20;
-
-function computeMM(cur) {
-  return (Number(cur.people) > 0 && Number(cur.months) > 0)
-    ? Number(cur.people) * Number(cur.months) : null;
+function parseISODate(s) {
+  if (!s || typeof s !== 'string') return null;
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  return isNaN(d.getTime()) ? null : d;
+}
+function computeWorkdays(cur) {
+  const a = parseISODate(cur.startDate);
+  const b = parseISODate(cur.endDate);
+  if (!a || !b || b < a) return null;
+  let count = 0;
+  const d = new Date(a);
+  while (d <= b) {
+    const w = d.getDay();
+    if (w !== 0 && w !== 6) count++;
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
+}
+function computeTotalDays(cur) {
+  const a = parseISODate(cur.startDate);
+  const b = parseISODate(cur.endDate);
+  if (!a || !b || b < a) return null;
+  return Math.round((b - a) / 86400000) + 1;
 }
 function computeHours(cur) {
-  const mm = computeMM(cur);
-  if (mm === null || !(Number(cur.hoursPerDay) > 0)) return null;
-  return mm * DAYS_PER_MONTH * Number(cur.hoursPerDay);
+  const wd = computeWorkdays(cur);
+  if (wd === null || !(Number(cur.people) > 0) || !(Number(cur.hoursPerDay) > 0)) return null;
+  return Number(cur.people) * wd * Number(cur.hoursPerDay);
 }
 function isCheckReady(cur) {
-  return Number(cur.people) > 0 && Number(cur.months) > 0 && Number(cur.hoursPerDay) > 0;
+  return Number(cur.people) > 0
+    && computeWorkdays(cur) !== null && computeWorkdays(cur) > 0
+    && Number(cur.hoursPerDay) > 0;
 }
 
 function checkConfirmLabel(c, hours) {
@@ -190,14 +212,15 @@ function renderChecksHTML() {
   return CHECKS.map(c => {
     const cur = state.checks[c.id] || {};
     const people = cur.people ?? '';
-    const months = cur.months ?? '';
+    const startDate = cur.startDate || '';
+    const endDate = cur.endDate || '';
     const hpd = cur.hoursPerDay ?? '';
-    const mm = computeMM(cur);
+    const workdays = computeWorkdays(cur);
+    const totalDays = computeTotalDays(cur);
     const hours = computeHours(cur);
     const ready = isCheckReady(cur);
     const confirmed = !!cur.confirmed;
     const peopleUnit = c.peopleUnit || '명';
-    const monthsUnit = c.monthsUnit || '개월';
     const hpdUnit = c.hoursPerDayUnit || '시간/일';
 
     return `
@@ -218,14 +241,6 @@ function renderChecksHTML() {
           </span>
         </label>
         <label class="check-input">
-          <span class="check-input__label">${c.monthsLabel}</span>
-          <span class="check-input__field-wrap">
-            <input type="number" min="0" step="1" class="check-input__field"
-              data-cid="${c.id}" data-check-field="months" placeholder="0" value="${months}">
-            <span class="check-input__unit">${monthsUnit}</span>
-          </span>
-        </label>
-        <label class="check-input">
           <span class="check-input__label">${c.hoursPerDayLabel}</span>
           <span class="check-input__field-wrap">
             <input type="number" min="0" step="0.5" class="check-input__field"
@@ -235,6 +250,31 @@ function renderChecksHTML() {
         </label>
       </div>
 
+      <div class="check__inputs check__inputs--dates">
+        <label class="check-input">
+          <span class="check-input__label">${c.startLabel}</span>
+          <span class="check-input__field-wrap">
+            <input type="date" class="check-input__field check-input__field--date"
+              data-cid="${c.id}" data-check-field="startDate" value="${startDate}">
+          </span>
+        </label>
+        <label class="check-input">
+          <span class="check-input__label">${c.endLabel}</span>
+          <span class="check-input__field-wrap">
+            <input type="date" class="check-input__field check-input__field--date"
+              data-cid="${c.id}" data-check-field="endDate" value="${endDate}">
+          </span>
+        </label>
+        <div class="check-input check-days" data-check-days="${c.id}">
+          <span class="check-input__label">작업일수</span>
+          <div class="check-days__val">
+            <span class="check-days__num">${workdays !== null ? workdays.toLocaleString() : '—'}</span>
+            <span class="check-days__unit">평일</span>
+            <span class="check-days__sub">${totalDays !== null ? `(전체 ${totalDays}일)` : ''}</span>
+          </div>
+        </div>
+      </div>
+
       <div class="check__calc" data-check-calc="${c.id}">
         <div class="check__calc-total">
           <span class="check__calc-mm" data-check-hours-num="${c.id}">${hours !== null ? Math.round(hours).toLocaleString() : '—'}</span>
@@ -242,8 +282,8 @@ function renderChecksHTML() {
         </div>
         <div class="check__calc-sub" data-check-breakdown="${c.id}">${
           ready
-            ? `${Number(people)}명 × ${Number(months)}개월 × ${DAYS_PER_MONTH}일 × ${Number(hpd)}시간`
-            : '인원 × 개월 × 20일 × 하루 작업시간'
+            ? `${Number(people)}명 × ${workdays}일(평일) × ${Number(hpd)}시간`
+            : '인원 × 작업일수(평일) × 하루 작업시간'
         }</div>
       </div>
 
@@ -468,15 +508,15 @@ function buildMarkdown() {
     lines.push('');
     for (const c of CHECKS) {
       const cur = state.checks[c.id] || {};
-      const mm = computeMM(cur);
+      const workdays = computeWorkdays(cur);
+      const totalDays = computeTotalDays(cur);
       const hours = computeHours(cur);
       const mark = cur.confirmed ? '✅ 확인' : '➖ 미확인';
       lines.push(`### ${c.id}. ${c.title}`);
       lines.push('');
       lines.push(`- **인원**: ${cur.people ?? '—'} 명`);
-      lines.push(`- **기간**: ${cur.months ?? '—'} 개월`);
+      lines.push(`- **기간**: ${cur.startDate || '—'} ~ ${cur.endDate || '—'}${totalDays !== null ? ` (전체 ${totalDays}일, 평일 ${workdays}일)` : ''}`);
       lines.push(`- **하루 작업시간**: ${cur.hoursPerDay ?? '—'} 시간/일`);
-      lines.push(`- **맨먼스**: ${mm !== null ? mm.toFixed(1) : '—'} MM`);
       lines.push(`- **총 환산 시간**: ${hours !== null ? Math.round(hours).toLocaleString() : '—'} 시간`);
       lines.push(`- **상태**: ${mark}`);
       lines.push('');
@@ -529,10 +569,11 @@ function buildVector() {
   for (const c of CHECKS) {
     const cur = state.checks[c.id];
     const p = cur?.people ?? '-';
-    const m = cur?.months ?? '-';
+    const s = cur?.startDate || '-';
+    const e = cur?.endDate || '-';
     const h = cur?.hoursPerDay ?? '-';
     const ok = cur?.confirmed ? 'Y' : 'N';
-    parts.push(`${c.id}:${p}x${m}@${h}h/d=${ok}`);
+    parts.push(`${c.id}:${p}p@${h}h/d:${s}~${e}=${ok}`);
   }
   return parts.join('/');
 }
@@ -722,8 +763,12 @@ function toggleFlag(fid) {
 }
 function setCheckField(cid, field, value) {
   const c = getCheck(cid);
-  const n = Number(value);
-  c[field] = Number.isFinite(n) && n > 0 ? n : null;
+  if (field === 'startDate' || field === 'endDate') {
+    c[field] = typeof value === 'string' ? value : '';
+  } else {
+    const n = Number(value);
+    c[field] = Number.isFinite(n) && n > 0 ? n : null;
+  }
   const cdef = CHECKS.find(x => x.id === cid);
 
   // Sync the matching input in the OTHER panel without full re-render (preserves focus)
@@ -731,7 +776,8 @@ function setCheckField(cid, field, value) {
     if (el.value !== String(value)) el.value = value;
   });
 
-  const mm = computeMM(c);
+  const workdays = computeWorkdays(c);
+  const totalDays = computeTotalDays(c);
   const hours = computeHours(c);
   const ready = isCheckReady(c);
 
@@ -741,8 +787,14 @@ function setCheckField(cid, field, value) {
   });
   document.querySelectorAll(`[data-check-breakdown="${cid}"]`).forEach(el => {
     el.textContent = ready
-      ? `${Number(c.people)}명 × ${Number(c.months)}개월 × ${DAYS_PER_MONTH}일 × ${Number(c.hoursPerDay)}시간`
-      : '인원 × 개월 × 20일 × 하루 작업시간';
+      ? `${Number(c.people)}명 × ${workdays}일(평일) × ${Number(c.hoursPerDay)}시간`
+      : '인원 × 작업일수(평일) × 하루 작업시간';
+  });
+  document.querySelectorAll(`[data-check-days="${cid}"]`).forEach(el => {
+    const numEl = el.querySelector('.check-days__num');
+    const subEl = el.querySelector('.check-days__sub');
+    if (numEl) numEl.textContent = workdays !== null ? workdays.toLocaleString() : '—';
+    if (subEl) subEl.textContent = totalDays !== null ? `(전체 ${totalDays}일)` : '';
   });
 
   // Confirm label + disabled state

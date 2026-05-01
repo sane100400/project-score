@@ -284,8 +284,8 @@ for (const item of splitByH3(sections['필수체크'] || '')) {
     hint: sanitize(p.hint || ''),
     peopleLabel: sanitize(p.peopleLabel || '투입 인원'),
     peopleUnit: sanitize(p.peopleUnit || '명'),
-    monthsLabel: sanitize(p.monthsLabel || '기간'),
-    monthsUnit: sanitize(p.monthsUnit || '개월'),
+    startLabel: sanitize(p.startLabel || '시작일'),
+    endLabel: sanitize(p.endLabel || '종료일'),
     hoursPerDayLabel: sanitize(p.hoursPerDayLabel || '하루 작업시간'),
     hoursPerDayUnit: sanitize(p.hoursPerDayUnit || '시간/일'),
     confirmLabel: sanitize(p.confirmLabel || '이 규모가 현실적이라고 판단합니다')
