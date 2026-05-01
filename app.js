@@ -216,14 +216,14 @@ function renderChecksHTML() {
 
       <div class="check__calc" data-check-calc="${c.id}">
         <div class="check__calc-row">
-          <span class="check__calc-num" data-calc-people="${c.id}">${ready ? people : '—'}</span>
+          <span class="check__calc-num" data-calc-people="${c.id}">${Number(people) > 0 ? people : '—'}</span>
           <span class="check__calc-op">×</span>
-          <span class="check__calc-num" data-calc-months="${c.id}">${ready ? months : '—'}</span>
+          <span class="check__calc-num" data-calc-months="${c.id}">${Number(months) > 0 ? months : '—'}</span>
           <span class="check__calc-eq">=</span>
           <span class="check__calc-mm" data-check-mm="${c.id}">${ready ? mm.toFixed(1) : '—'}</span>
           <span class="check__calc-unit">MM</span>
         </div>
-        <div class="check__calc-sub" data-check-hours="${c.id}">${ready ? `≈ ${hours.toLocaleString()}시간 (1인 8h × 20일 기준)` : '인원과 기간을 입력하면 환산 시간이 표시됩니다'}</div>
+        <div class="check__calc-sub" data-check-hours="${c.id}">${ready ? `≈ ${hours.toLocaleString()}시간 (1인 8h × 20일 기준)` : '≈ —시간 (1인 8h × 20일 기준)'}</div>
       </div>
 
       <button type="button" class="check__confirm ${confirmed ? 'selected' : ''} ${ready ? '' : 'is-disabled'}" data-check-confirm="${c.id}" ${ready ? '' : 'disabled'}>
@@ -715,15 +715,15 @@ function setCheckField(cid, field, value) {
     el.textContent = ready ? mm.toFixed(1) : '—';
   });
   document.querySelectorAll(`[data-calc-people="${cid}"]`).forEach(el => {
-    el.textContent = ready ? c.people : '—';
+    el.textContent = Number(c.people) > 0 ? c.people : '—';
   });
   document.querySelectorAll(`[data-calc-months="${cid}"]`).forEach(el => {
-    el.textContent = ready ? c.months : '—';
+    el.textContent = Number(c.months) > 0 ? c.months : '—';
   });
   document.querySelectorAll(`[data-check-hours="${cid}"]`).forEach(el => {
     el.textContent = ready
       ? `≈ ${hours.toLocaleString()}시간 (1인 8h × 20일 기준)`
-      : '인원과 기간을 입력하면 환산 시간이 표시됩니다';
+      : '≈ —시간 (1인 8h × 20일 기준)';
   });
 
   // Confirm label + disabled state
