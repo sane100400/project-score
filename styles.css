@@ -1950,62 +1950,39 @@ body:not(.results-locked) .score-fab__val {
   line-height: 1.4;
 }
 
-/* White panel inversion */
+/* White-track panel (elevated dark surface #252530) */
 .tab-panel--white .checks {
-  border-color: rgba(0,0,0,0.1);
-  background: rgba(0,0,0,0.02);
+  background: #252530;
+  border-color: #55556a;
 }
-.tab-panel--white .check { border-bottom-color: rgba(0,0,0,0.08); }
-.tab-panel--white .check__tag {
-  color: rgba(0,0,0,0.55);
-  border-color: rgba(0,0,0,0.15);
-}
-.tab-panel--white .check__title { color: #000; }
-.tab-panel--white .check__hint {
-  color: rgba(0,0,0,0.7);
-  border-left-color: rgba(0,0,0,0.4);
-}
-.tab-panel--white .check-input__label { color: rgba(0,0,0,0.55); }
+.tab-panel--white .check { border-bottom-color: #55556a; }
 .tab-panel--white .check-input__field-wrap {
-  background: rgba(0,0,0,0.03);
-  border-color: rgba(0,0,0,0.15);
+  background: #1a1a20;
+  border-color: #55556a;
 }
-.tab-panel--white .check-input__field-wrap:focus-within { border-color: rgba(0,0,0,0.6); }
-.tab-panel--white .check-input__field { color: #000; }
-.tab-panel--white .check-input__field::placeholder { color: rgba(0,0,0,0.3); }
+.tab-panel--white .check-input__field-wrap:focus-within { border-color: var(--fg-0); }
 .tab-panel--white .check-input__unit {
-  color: rgba(0,0,0,0.55);
-  background: rgba(0,0,0,0.04);
-  border-left-color: rgba(0,0,0,0.1);
+  background: #2e2e3a;
+  border-left-color: #55556a;
 }
-.tab-panel--white .check-op { color: rgba(0,0,0,0.3); }
 .tab-panel--white .check__calc {
-  background: rgba(0,0,0,0.03);
-  border-color: rgba(0,0,0,0.1);
+  background: #1a1a20;
+  border-color: #55556a;
 }
 .tab-panel--white .check.is-ready .check__calc {
-  background: rgba(0,0,0,0.06);
-  border-color: rgba(0,0,0,0.5);
+  background: #2e2e3a;
+  border-color: var(--fg-0);
 }
-.tab-panel--white .check__calc-num,
-.tab-panel--white .check__calc-mm { color: #000; }
-.tab-panel--white .check__calc-op,
-.tab-panel--white .check__calc-eq,
-.tab-panel--white .check__calc-unit,
-.tab-panel--white .check__calc-sub { color: rgba(0,0,0,0.55); }
+.tab-panel--white .check__hint { border-left-color: var(--fg-0); }
 .tab-panel--white .check__confirm {
-  background: rgba(255,255,255,0.5);
-  border-color: rgba(0,0,0,0.15);
-  color: rgba(0,0,0,0.7);
+  background: #1a1a20;
+  border-color: #55556a;
 }
-.tab-panel--white .check__confirm:hover:not(.is-disabled) {
-  border-color: rgba(0,0,0,0.6);
-  color: #000;
-}
+.tab-panel--white .check__confirm:hover:not(.is-disabled) { border-color: var(--fg-0); }
 .tab-panel--white .check__confirm.selected {
-  background: #000;
-  color: #fff;
-  border-color: #000;
+  background: var(--fg-0);
+  color: var(--bg-0);
+  border-color: var(--fg-0);
 }
 
 @media (max-width: 520px) {
