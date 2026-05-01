@@ -160,16 +160,28 @@ function renderQuestions() {
 }
 
 function getCheck(cid) {
-  if (!state.checks[cid]) state.checks[cid] = { people: null, months: null, confirmed: false };
+  if (!state.checks[cid]) state.checks[cid] = { people: null, months: null, hoursPerDay: null, confirmed: false };
   return state.checks[cid];
 }
 
-const HOURS_PER_MM = 160; // 표준 person-month: 8h × 20일
+const DAYS_PER_MONTH = 20;
 
-function checkConfirmLabel(c, mm) {
-  if (mm !== null) {
-    const hours = Math.round(mm * HOURS_PER_MM);
-    return `정말 약 ${hours.toLocaleString()}시간을 투자할 만한 프로젝트입니까?`;
+function computeMM(cur) {
+  return (Number(cur.people) > 0 && Number(cur.months) > 0)
+    ? Number(cur.people) * Number(cur.months) : null;
+}
+function computeHours(cur) {
+  const mm = computeMM(cur);
+  if (mm === null || !(Number(cur.hoursPerDay) > 0)) return null;
+  return mm * DAYS_PER_MONTH * Number(cur.hoursPerDay);
+}
+function isCheckReady(cur) {
+  return Number(cur.people) > 0 && Number(cur.months) > 0 && Number(cur.hoursPerDay) > 0;
+}
+
+function checkConfirmLabel(c, hours) {
+  if (hours !== null && hours !== undefined) {
+    return `정말 약 ${Math.round(hours).toLocaleString()}시간을 투자할 만한 프로젝트입니까?`;
   }
   return c.confirmLabel || '이 규모가 현실적이라고 판단합니다';
 }
@@ -179,12 +191,14 @@ function renderChecksHTML() {
     const cur = state.checks[c.id] || {};
     const people = cur.people ?? '';
     const months = cur.months ?? '';
-    const mm = (Number(people) > 0 && Number(months) > 0) ? (Number(people) * Number(months)) : null;
+    const hpd = cur.hoursPerDay ?? '';
+    const mm = computeMM(cur);
+    const hours = computeHours(cur);
+    const ready = isCheckReady(cur);
     const confirmed = !!cur.confirmed;
-    const ready = mm !== null;
     const peopleUnit = c.peopleUnit || '명';
     const monthsUnit = c.monthsUnit || '개월';
-    const hours = ready ? Math.round(mm * HOURS_PER_MM) : null;
+    const hpdUnit = c.hoursPerDayUnit || '시간/일';
 
     return `
     <div class="check ${ready ? 'is-ready' : ''}" data-cid="${c.id}">
@@ -203,13 +217,20 @@ function renderChecksHTML() {
             <span class="check-input__unit">${peopleUnit}</span>
           </span>
         </label>
-        <span class="check-op" aria-hidden="true">×</span>
         <label class="check-input">
           <span class="check-input__label">${c.monthsLabel}</span>
           <span class="check-input__field-wrap">
             <input type="number" min="0" step="1" class="check-input__field"
               data-cid="${c.id}" data-check-field="months" placeholder="0" value="${months}">
             <span class="check-input__unit">${monthsUnit}</span>
+          </span>
+        </label>
+        <label class="check-input">
+          <span class="check-input__label">${c.hoursPerDayLabel}</span>
+          <span class="check-input__field-wrap">
+            <input type="number" min="0" step="0.5" class="check-input__field"
+              data-cid="${c.id}" data-check-field="hoursPerDay" placeholder="0" value="${hpd}">
+            <span class="check-input__unit">${hpdUnit}</span>
           </span>
         </label>
       </div>
@@ -220,15 +241,19 @@ function renderChecksHTML() {
           <span class="check__calc-op">×</span>
           <span class="check__calc-num" data-calc-months="${c.id}">${Number(months) > 0 ? months : '—'}</span>
           <span class="check__calc-eq">=</span>
-          <span class="check__calc-mm" data-check-mm="${c.id}">${ready ? mm.toFixed(1) : '—'}</span>
+          <span class="check__calc-mm" data-check-mm="${c.id}">${mm !== null ? mm.toFixed(1) : '—'}</span>
           <span class="check__calc-unit">MM</span>
         </div>
-        <div class="check__calc-sub" data-check-hours="${c.id}">${ready ? `≈ ${hours.toLocaleString()}시간 (1인 8h × 20일 기준)` : '≈ —시간 (1인 8h × 20일 기준)'}</div>
+        <div class="check__calc-sub" data-check-hours="${c.id}">${
+          hours !== null
+            ? `≈ ${Math.round(hours).toLocaleString()}시간 (하루 ${Number(hpd)}시간 × ${DAYS_PER_MONTH}일/월 기준)`
+            : `≈ —시간 (하루 작업시간 × ${DAYS_PER_MONTH}일/월 기준)`
+        }</div>
       </div>
 
       <button type="button" class="check__confirm ${confirmed ? 'selected' : ''} ${ready ? '' : 'is-disabled'}" data-check-confirm="${c.id}" ${ready ? '' : 'disabled'}>
         <span class="check__confirm-box" aria-hidden="true">${confirmed ? '✓' : ''}</span>
-        <span class="check__confirm-label" data-check-label="${c.id}">${checkConfirmLabel(c, mm)}</span>
+        <span class="check__confirm-label" data-check-label="${c.id}">${checkConfirmLabel(c, hours)}</span>
       </button>
     </div>`;
   }).join('');
@@ -447,13 +472,16 @@ function buildMarkdown() {
     lines.push('');
     for (const c of CHECKS) {
       const cur = state.checks[c.id] || {};
-      const mm = (Number(cur.people) > 0 && Number(cur.months) > 0) ? (Number(cur.people) * Number(cur.months)).toFixed(1) : '—';
-      const mark = cur.confirmed ? '✅ 검토 완료' : '➖ 미확인';
+      const mm = computeMM(cur);
+      const hours = computeHours(cur);
+      const mark = cur.confirmed ? '✅ 확인' : '➖ 미확인';
       lines.push(`### ${c.id}. ${c.title}`);
       lines.push('');
       lines.push(`- **인원**: ${cur.people ?? '—'} 명`);
       lines.push(`- **기간**: ${cur.months ?? '—'} 개월`);
-      lines.push(`- **맨먼스**: ${mm} MM`);
+      lines.push(`- **하루 작업시간**: ${cur.hoursPerDay ?? '—'} 시간/일`);
+      lines.push(`- **맨먼스**: ${mm !== null ? mm.toFixed(1) : '—'} MM`);
+      lines.push(`- **총 환산 시간**: ${hours !== null ? Math.round(hours).toLocaleString() : '—'} 시간`);
       lines.push(`- **상태**: ${mark}`);
       lines.push('');
     }
@@ -506,8 +534,9 @@ function buildVector() {
     const cur = state.checks[c.id];
     const p = cur?.people ?? '-';
     const m = cur?.months ?? '-';
+    const h = cur?.hoursPerDay ?? '-';
     const ok = cur?.confirmed ? 'Y' : 'N';
-    parts.push(`${c.id}:${p}x${m}=${ok}`);
+    parts.push(`${c.id}:${p}x${m}@${h}h/d=${ok}`);
   }
   return parts.join('/');
 }
@@ -706,13 +735,13 @@ function setCheckField(cid, field, value) {
     if (el.value !== String(value)) el.value = value;
   });
 
-  const mm = (Number(c.people) > 0 && Number(c.months) > 0) ? (Number(c.people) * Number(c.months)) : null;
-  const ready = mm !== null;
-  const hours = ready ? Math.round(mm * HOURS_PER_MM) : null;
+  const mm = computeMM(c);
+  const hours = computeHours(c);
+  const ready = isCheckReady(c);
 
   // Calc display
   document.querySelectorAll(`[data-check-mm="${cid}"]`).forEach(el => {
-    el.textContent = ready ? mm.toFixed(1) : '—';
+    el.textContent = mm !== null ? mm.toFixed(1) : '—';
   });
   document.querySelectorAll(`[data-calc-people="${cid}"]`).forEach(el => {
     el.textContent = Number(c.people) > 0 ? c.people : '—';
@@ -721,14 +750,14 @@ function setCheckField(cid, field, value) {
     el.textContent = Number(c.months) > 0 ? c.months : '—';
   });
   document.querySelectorAll(`[data-check-hours="${cid}"]`).forEach(el => {
-    el.textContent = ready
-      ? `≈ ${hours.toLocaleString()}시간 (1인 8h × 20일 기준)`
-      : '≈ —시간 (1인 8h × 20일 기준)';
+    el.textContent = hours !== null
+      ? `≈ ${Math.round(hours).toLocaleString()}시간 (하루 ${Number(c.hoursPerDay)}시간 × ${DAYS_PER_MONTH}일/월 기준)`
+      : `≈ —시간 (하루 작업시간 × ${DAYS_PER_MONTH}일/월 기준)`;
   });
 
   // Confirm label + disabled state
   document.querySelectorAll(`[data-check-label="${cid}"]`).forEach(el => {
-    el.textContent = checkConfirmLabel(cdef, mm);
+    el.textContent = checkConfirmLabel(cdef, hours);
   });
   document.querySelectorAll(`[data-check-confirm="${cid}"]`).forEach(btn => {
     btn.classList.toggle('is-disabled', !ready);
@@ -749,7 +778,7 @@ function setCheckField(cid, field, value) {
 }
 function toggleCheckConfirm(cid) {
   const c = getCheck(cid);
-  if (!(Number(c.people) > 0) || !(Number(c.months) > 0)) return;
+  if (!isCheckReady(c)) return;
   c.confirmed = !c.confirmed;
   renderChecks();
   updateUI(); save(); updateSubmitState();
@@ -966,8 +995,7 @@ function isFullyAnswered() {
   }
   for (const c of CHECKS) {
     const cur = state.checks[c.id];
-    if (!cur || !cur.confirmed) return false;
-    if (!(Number(cur.people) > 0) || !(Number(cur.months) > 0)) return false;
+    if (!cur || !cur.confirmed || !isCheckReady(cur)) return false;
   }
   return true;
 }

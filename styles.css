@@ -1791,7 +1791,7 @@ body:not(.results-locked) .score-fab__val {
 
 .check__inputs {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: repeat(3, 1fr);
   align-items: end;
   gap: 14px;
   margin-bottom: var(--sp-4);
@@ -1985,9 +1985,10 @@ body:not(.results-locked) .score-fab__val {
   border-color: var(--fg-0);
 }
 
-@media (max-width: 520px) {
+@media (max-width: 720px) {
   .check__inputs { grid-template-columns: 1fr; gap: 10px; }
-  .check-op { display: none; }
+}
+@media (max-width: 520px) {
   .check__calc-num { font-size: 26px; }
   .check__calc-mm { font-size: 36px; }
 }

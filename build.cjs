@@ -286,6 +286,8 @@ for (const item of splitByH3(sections['필수체크'] || '')) {
     peopleUnit: sanitize(p.peopleUnit || '명'),
     monthsLabel: sanitize(p.monthsLabel || '기간'),
     monthsUnit: sanitize(p.monthsUnit || '개월'),
+    hoursPerDayLabel: sanitize(p.hoursPerDayLabel || '하루 작업시간'),
+    hoursPerDayUnit: sanitize(p.hoursPerDayUnit || '시간/일'),
     confirmLabel: sanitize(p.confirmLabel || '이 규모가 현실적이라고 판단합니다')
   });
 }
