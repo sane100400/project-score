@@ -903,6 +903,11 @@ function bind() {
       const v = b.dataset.worth === 'yes';
       state.worthIt = state.worthIt === v ? null : v;
       updateSubmitState();
+      if (state.worthIt !== null) {
+        requestAnimationFrame(() => {
+          document.getElementById('submitBox')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+      }
       save();
     });
   });
