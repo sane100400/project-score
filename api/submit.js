@@ -16,22 +16,38 @@ function isPlainObject(v) {
   return v !== null && typeof v === 'object' && !Array.isArray(v);
 }
 
+function sendJson(res, status, payload) {
+  res.statusCode = status;
+  res.setHeader('content-type', 'application/json');
+  res.end(JSON.stringify(payload));
+}
+
+async function readJsonBody(req) {
+  if (isPlainObject(req.body)) return req.body;
+  if (typeof req.body === 'string' || Buffer.isBuffer(req.body)) {
+    return JSON.parse(String(req.body));
+  }
+
+  let raw = '';
+  for await (const chunk of req) {
+    raw += chunk;
+    if (raw.length > 1_000_000) throw new Error('body_too_large');
+  }
+  return JSON.parse(raw);
+}
+
 export const config = { runtime: 'nodejs' };
 
-export default async function handler(req) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'method_not_allowed' }), {
-      status: 405, headers: { 'content-type': 'application/json' }
-    });
+    return sendJson(res, 405, { error: 'method_not_allowed' });
   }
 
   let body;
   try {
-    body = await req.json();
+    body = await readJsonBody(req);
   } catch {
-    return new Response(JSON.stringify({ error: 'invalid_json' }), {
-      status: 400, headers: { 'content-type': 'application/json' }
-    });
+    return sendJson(res, 400, { error: 'invalid_json' });
   }
 
   const {
@@ -44,38 +60,26 @@ export default async function handler(req) {
   } = body || {};
 
   if (termsAccepted !== true) {
-    return new Response(JSON.stringify({ error: 'terms_not_accepted' }), {
-      status: 400, headers: { 'content-type': 'application/json' }
-    });
+    return sendJson(res, 400, { error: 'terms_not_accepted' });
   }
 
   const cleanTopic = clamp(topic, MAX_TOPIC).trim();
   if (!cleanTopic) {
-    return new Response(JSON.stringify({ error: 'topic_required' }), {
-      status: 400, headers: { 'content-type': 'application/json' }
-    });
+    return sendJson(res, 400, { error: 'topic_required' });
   }
 
   if (!['learn', 'build', 'showcase'].includes(mode)) {
-    return new Response(JSON.stringify({ error: 'invalid_mode' }), {
-      status: 400, headers: { 'content-type': 'application/json' }
-    });
+    return sendJson(res, 400, { error: 'invalid_mode' });
   }
   if (!Array.isArray(types) || types.some(t => typeof t !== 'string')) {
-    return new Response(JSON.stringify({ error: 'invalid_types' }), {
-      status: 400, headers: { 'content-type': 'application/json' }
-    });
+    return sendJson(res, 400, { error: 'invalid_types' });
   }
   if (!['white', 'black', 'both'].includes(track)) {
-    return new Response(JSON.stringify({ error: 'invalid_track' }), {
-      status: 400, headers: { 'content-type': 'application/json' }
-    });
+    return sendJson(res, 400, { error: 'invalid_track' });
   }
   if (!isPlainObject(answers) || !isPlainObject(gates) || !isPlainObject(flags)
       || !isPlainObject(inputs) || !isPlainObject(memos)) {
-    return new Response(JSON.stringify({ error: 'invalid_state' }), {
-      status: 400, headers: { 'content-type': 'application/json' }
-    });
+    return sendJson(res, 400, { error: 'invalid_state' });
   }
 
   const cleanMemos = {};
@@ -116,13 +120,9 @@ export default async function handler(req) {
         ${typeof worthIt === 'boolean' ? worthIt : null}
       )
     `;
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200, headers: { 'content-type': 'application/json' }
-    });
+    return sendJson(res, 200, { ok: true });
   } catch (e) {
     console.error('submit_db_error', e);
-    return new Response(JSON.stringify({ error: 'db_error' }), {
-      status: 500, headers: { 'content-type': 'application/json' }
-    });
+    return sendJson(res, 500, { error: 'db_error' });
   }
 }
