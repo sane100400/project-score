@@ -127,7 +127,7 @@ function renderQuestionHTML(questions) {
       ${q.hintByType && multi ? tagBar : ''}
       <div class="question__hint">${qHint(q)}</div>
       <div class="question__memo">
-        <textarea class="memo-field" data-qid="${q.id}" placeholder="내 상황을 적어 보세요" rows="2">${state.memos[q.id] || ''}</textarea>
+        <textarea class="memo-field" data-qid="${q.id}" placeholder="내 상황을 적어 보세요 (선택)" maxlength="2000" rows="2">${state.memos[q.id] || ''}</textarea>
       </div>
       ${q.inputs ? `<div class="question__inputs">${q.inputs.map((inp, idx) => `
         <div class="input-row">
@@ -1021,6 +1021,7 @@ function bind() {
 
 function isFullyAnswered() {
   const r = compute();
+  // 메모와 질문별 보조 입력은 선택사항이다. 점수 선택과 필수 체크만 검사한다.
   if (state.track !== 'black' && r.whiteAnswered < whiteQuestions.length) return false;
   if (state.track !== 'white') {
     if (r.blackAnswered < blackQuestions.length) return false;

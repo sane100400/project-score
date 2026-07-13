@@ -104,7 +104,7 @@ node build.cjs           # questions.md → questions.js
 python3 -m http.server   # http://localhost:8000
 ```
 
-Vercel은 `vercel.json`의 `buildCommand: "node build.cjs"`로 푸시 시 자동 재빌드합니다. 익명 통계 제출 백엔드는 `api/` 아래 Vercel Functions + Neon Postgres + BotID 조합입니다.
+Vercel은 `vercel.json`의 `buildCommand: "node build.cjs"`로 푸시 시 자동 재빌드합니다. 익명 통계 제출 백엔드는 `api/` 아래 Vercel Functions + Neon Postgres 조합입니다.
 
 ---
 
@@ -117,7 +117,7 @@ app.js            상태·듀얼 채점·렌더·동기화·export·제출
 questions.md      ← 편집은 여기
 questions.js      ← 자동 생성 (직접 편집 금지)
 build.cjs         MD → JS 빌드
-api/              익명 통계 제출 (Postgres + BotID)
+api/              익명 통계 제출 (Neon Postgres)
 vercel.json       buildCommand, CSP, 보안 헤더
 deep-research-report.md   축과 임계값의 출처와 인용
 guide.md          questions.md 작성 규칙

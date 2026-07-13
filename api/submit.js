@@ -1,5 +1,4 @@
 import { neon } from '@neondatabase/serverless';
-import { checkBotId } from 'botid/server';
 
 const TERMS_VERSION = '2026-04-30';
 const APP_VERSION = '3.1.0';
@@ -23,13 +22,6 @@ export default async function handler(req) {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'method_not_allowed' }), {
       status: 405, headers: { 'content-type': 'application/json' }
-    });
-  }
-
-  const verification = await checkBotId();
-  if (verification.isBot) {
-    return new Response(JSON.stringify({ error: 'bot_detected' }), {
-      status: 403, headers: { 'content-type': 'application/json' }
     });
   }
 
@@ -64,7 +56,7 @@ export default async function handler(req) {
     });
   }
 
-  if (!['discover', 'build', 'compete'].includes(mode)) {
+  if (!['learn', 'build', 'showcase'].includes(mode)) {
     return new Response(JSON.stringify({ error: 'invalid_mode' }), {
       status: 400, headers: { 'content-type': 'application/json' }
     });
