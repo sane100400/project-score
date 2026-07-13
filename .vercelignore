@@ -1,0 +1,7 @@
+.git
+.vercel
+.env*.local
+node_modules
+service_plan.md
+slack_data_items.txt
+space_project_score_form.txt
